@@ -1,0 +1,14 @@
+# Ignore Quartus-specific files and directories
+db/
+incremental_db/
+greybox_tmp/
+output_files/
+simulation/
+
+
+# Ignore ModelSim files
+work/
+transcript
+vsim.wlf
+#extra
+*.bak
