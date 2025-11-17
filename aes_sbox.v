@@ -1,4 +1,4 @@
-module aes_sbox (
+module sbox (
     input  wire [7:0]  in,
     output reg  [7:0]  out
 );

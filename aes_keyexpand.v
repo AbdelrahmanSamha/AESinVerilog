@@ -40,7 +40,7 @@ module aes_keyexpand (
 	//-------------------------------------------------------------------------
 	// DATAPATH. (schematic can be found in the documnetation.) 
 	//-------------------------------------------------------------------------
-	
+	//data path wires and registers: 
 	reg [31:0] a, b, c, temp; 
 	reg [31:0] ff1, ff2;
 	
@@ -51,7 +51,13 @@ module aes_keyexpand (
 	wire[31:0] rotation, sbox;
 	wire[31:0] xor1, xor2; 
 	wire[31:0] rcon;
-	
+	// statemachine wires and registers: 
+    reg [2:0] state, next_state;
+	 reg wait_reg, next_wait_reg, next_key_ready_reg;
+	 reg [2:0] counter, next_counter;
+	 reg [3:0] r_counter, next_r_counter; 
+	 reg [5:0]iter_counter,next_iter_counter;
+		
 	
 	always @(posedge clk) begin 
 		if (!rst_n) begin 
@@ -116,11 +122,7 @@ module aes_keyexpand (
               GEN_SR= 3'b100,
               STORE = 3'b101;
 
-    reg [2:0] state, next_state;
-	 reg wait_reg, next_wait_reg, next_key_ready_reg;
-	 reg [2:0] counter, next_counter;
-	 reg [3:0] r_counter, next_r_counter; 
-	 reg [5:0]iter_counter,next_iter_counter;
+
     //------------------------------------
     // 1. State register (sequential logic)
     //------------------------------------
@@ -196,7 +198,30 @@ module aes_keyexpand (
 		  next_iter_counter = iter_counter;
         case (state)
             IDLE: begin
-                // waiting for start
+               // reset all FSM registers
+					next_wait_reg      = 1'b0;
+					next_key_ready_reg = 1'b0;
+	
+					next_counter       = 3'd0;
+					next_r_counter     = 4'd1;
+					next_iter_counter  = 6'd4;
+	
+					
+					a_l    = 1'b0;
+					b_l    = 1'b0;
+					c_l    = 1'b0;
+					temp_l = 1'b0;
+					ff1_l  = 1'b0;
+					ff2_l  = 1'b0;
+	
+					// select the original key (all zeros after reset)
+					a_s    = 1'b0;
+					b_s    = 1'b0;
+					c_s    = 1'b0;
+					temp_s = 1'b0;
+	
+					// force xor2 = temp (clears temp path)
+					xor2_s = 1'b0;
             end
 
             INIT: begin
@@ -216,7 +241,7 @@ module aes_keyexpand (
 						next_key_ready_reg = 1'b0;	
 					 end 
 					 else if (counter == 3'd4) begin 
-						next_counter = 3'b0; 
+						next_counter = 3'd1; 
 						next_key_ready_reg = 1'b1; 
 						next_wait_reg = 1'b1; 
 					 end 
@@ -226,6 +251,7 @@ module aes_keyexpand (
                 if (rkey_latched)begin 
 						next_wait_reg = 1'b0;
 						next_r_counter = r_counter +1; 
+						next_key_ready_reg = 1'b0; 
 					 end 
 				end
 

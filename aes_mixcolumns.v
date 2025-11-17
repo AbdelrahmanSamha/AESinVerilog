@@ -93,26 +93,25 @@ In this operation we will define a fixed operation on each cell to generate the 
     wire [7:0] S03, S13, S23, S33; //4th column
 	
 	//column-major mapping 
-    assign b0  = in[7:0];
-    assign b1  = in[15:8];
-    assign b2  = in[23:16];
-    assign b3  = in[31:24];
-
-    assign b4  = in[39:32];
-    assign b5  = in[47:40];
-    assign b6  = in[55:48];
-    assign b7  = in[63:56];
-
-    assign b8  = in[71:64];
-    assign b9  = in[79:72];
-    assign b10 = in[87:80];
-    assign b11 = in[95:88];
-
-    assign b12 = in[103:96];
-    assign b13 = in[111:104];
-    assign b14 = in[119:112];
-    assign b15 = in[127:120];
+	assign b0  = in[127:120];
+	assign b1  = in[119:112];
+	assign b2  = in[111:104];
+	assign b3  = in[103:96];
 	
+	assign b4  = in[95:88];
+	assign b5  = in[87:80];
+	assign b6  = in[79:72];
+	assign b7  = in[71:64];
+	
+	assign b8  = in[63:56];
+	assign b9  = in[55:48];
+	assign b10 = in[47:40];
+	assign b11 = in[39:32];
+	
+	assign b12 = in[31:24];
+	assign b13 = in[23:16];
+	assign b14 = in[15:8];
+	assign b15 = in[7:0];
 	
  // --------------------------
     // MixColumns transformations
@@ -196,25 +195,25 @@ In this operation we will define a fixed operation on each cell to generate the 
 	
 
 	// Assign output back into 128-bit wire (column-major order)
-    assign out[7:0]     = S00;
-    assign out[15:8]    = S10;
-    assign out[23:16]   = S20;
-    assign out[31:24]   = S30;
-
-    assign out[39:32]   = S01;
-    assign out[47:40]   = S11;
-    assign out[55:48]   = S21;
-    assign out[63:56]   = S31;
-
-    assign out[71:64]   = S02;
-    assign out[79:72]   = S12;
-    assign out[87:80]   = S22;
-    assign out[95:88]   = S32;
-
-    assign out[103:96]  = S03;
-    assign out[111:104] = S13;
-    assign out[119:112] = S23;
-    assign out[127:120] = S33;
+	assign out[127:120] = S00;
+	assign out[119:112] = S10;
+	assign out[111:104] = S20;
+	assign out[103:96]  = S30;
+	
+	assign out[95:88]   = S01;
+	assign out[87:80]   = S11;
+	assign out[79:72]   = S21;
+	assign out[71:64]   = S31;
+	
+	assign out[63:56]   = S02;
+	assign out[55:48]   = S12;
+	assign out[47:40]   = S22;
+	assign out[39:32]   = S32;
+	
+	assign out[31:24]   = S03;
+	assign out[23:16]   = S13;
+	assign out[15:8]    = S23;
+	assign out[7:0]     = S33;
 
  
 endmodule
@@ -230,7 +229,7 @@ module mult2 (
     input  wire [7:0] in,
     output wire [7:0] out
 );
-    assign result = (in[7] == 1'b1) ? ((in << 1) ^ 8'h1B) : (in << 1);
+    assign out = (in[7] == 1'b1) ? ((in << 1) ^ 8'h1B) : (in << 1);
 endmodule
 
 
@@ -244,10 +243,10 @@ module mult3 (
     // Instantiate the mult2 module
     mult2 u_mult2 (
         .in(in),
-        .result(mult2_out)
+        .out(mult2_out)
     );
 
     // In GF(2^8), multiplication by 3 = (2 * b) XOR b
-    assign result = mult2_out ^ in;
+    assign out = mult2_out ^ in;
 
 endmodule

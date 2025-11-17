@@ -1,4 +1,4 @@
-module subBytes(
+module subbytes(
     input  [127:0] in,
     output [127:0] out
 );
