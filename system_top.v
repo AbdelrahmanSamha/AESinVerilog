@@ -27,7 +27,7 @@ module system_top (
 		 	 .done(done)
 		);
 	
-	
+	mem_round_keys( .clock(clk), .address(), .data(), .wren(), .q());
 	
 
 endmodule
