@@ -2,20 +2,32 @@ module aes_round (
     input  wire [127:0] state_in,
     input  wire [127:0] round_key,
     input  wire         final_round,
-    output 		 [127:0] state_out
+    input  wire         dec,           // decryption signal
+    output wire [127:0] state_out
 );
-    wire [127:0] sub, shift, mix, add;
-
-    subbytes   u_sub   (.in(state_in), .out(sub));
-    aes_shiftrows  u_shift (.in(sub),      .out(shift));
-    aes_mixcolumns u_mix   (.in(shift),    .out(mix));
-    aes_addroundkey u_add  (
-        .state_in(final_round ? shift : mix),
+    wire [127:0] enc_path_out, dec_path_out;
+    
+    // Encryption path: SubBytes → ShiftRows → MixColumns → AddRoundKey
+    round_enc u_enc_round (
+        .state_in(state_in),
         .round_key(round_key),
-        .state_out(add)
+        .final_round(final_round),
+        .state_out(enc_path_out)
     );
-		
-	 assign state_out = add; 		
-		
-
+    
+    // Decryption path: InvShiftRows → InvSubBytes → AddRoundKey → InvMixColumns
+    round_dec u_dec_round (
+        .state_in(state_in),
+        .round_key(round_key),
+        .final_round(final_round),
+        .state_out(dec_path_out)
+    );
+    
+    // Mux to select between encryption and decryption
+    mux2to1 #(.WIDTH(128)) u_mux_mode (
+        .in0(enc_path_out),    // encryption
+        .in1(dec_path_out),    // decryption
+        .sel(dec),
+        .out(state_out)
+    );
 endmodule
