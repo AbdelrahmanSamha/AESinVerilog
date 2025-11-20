@@ -19,7 +19,7 @@ module block_encrypt (
 	wire [127:0] round_encstate;
 	reg final_round_signal;
 	wire [127:0] roundkey;
-	reg init_keyexpand, rkey_latched; 
+	reg init_keyexpand; 
 	wire key_ready_from_keyexpand; 
    //------------------------------------
    // 1. State register (sequential logic)
@@ -79,14 +79,12 @@ module block_encrypt (
 		next_round_counter = round_counter;
 		next_encstate = encstate;
 		final_round_signal = 1'b0; 
-		rkey_latched = 1'b0;
 		init_keyexpand = 1'b0; 
 		 
 		case (state) 
 			IDLE: begin 
 				next_round_counter = 4'd0;
 				next_encstate      = 128'd0;
-				rkey_latched       = 1'b0;
 				init_keyexpand     = 1'b0;
 				
 			end 
@@ -98,14 +96,12 @@ module block_encrypt (
 				if (key_ready_from_keyexpand) begin 
 					next_round_counter = round_counter + 1; 
 					next_encstate = round_encstate;
-					rkey_latched = 1'b1; 
 				end 
 			end	
 			FINAL: begin
 				if (key_ready_from_keyexpand) begin 
 					final_round_signal = 1'b1;
 					next_encstate = round_encstate;
-					rkey_latched = 1'b1;	
 				end 
 				
 			end	
@@ -116,7 +112,7 @@ module block_encrypt (
 	
 	aes_round round_trans(.state_in(encstate), .round_key(roundkey), .final_round(final_round_signal), .state_out(round_encstate));
 	
-	aes_keyexpand keyexp (.clk(clk), .rst_n(rst_n), .init(init_keyexpand), .rkey_latched(rkey_latched), .og_key(cipherkey), .key_ready_reg(key_ready_from_keyexpand), .round_key(roundkey));
+	
 	
 	assign ciphertext = encstate;
 	
