@@ -71,14 +71,14 @@ module block_encrypt (
 					next_state = GET_KEY; 
 				end 
 				else if ((dec) && round_counter > 4'd1) begin 
-					next_state = GET_KEY
+					next_state = GET_KEY;
 				end 
 				else begin 
 					next_state = FINAL; 
 				end 
 			end
 			
-			FINAL :begin
+			FINAL : begin
 				next_state = IDLE; 
 			end
 		endcase 
@@ -93,8 +93,7 @@ module block_encrypt (
 		final_round_signal = 1'b0;
 		key_address = 4'b0; 
 		case (state) 
-			IDLE: begin 
-				next_round_counter = 4'd0;
+			IDLE: begin
 				next_encstate      = 128'd0;	
 			end
 			
@@ -125,14 +124,16 @@ module block_encrypt (
 			 
 				next_encstate = round_encstate;
 				if (!dec)begin 
+					next_round_counter = round_counter + 1;
 					if (round_counter == 4'd9) begin 
 						key_address = 4'd10;
-						next_round_counter = round_counter + 1;
+						
 					end
+				end
 				else if (dec) begin
+					next_round_counter = round_counter - 1;
 					if (round_counter == 4'd0)begin 
 						key_address = 4'd0; 
-						next_round_counter = round_counter - 1;
 					end 
 				end	
 			end	

@@ -16,7 +16,8 @@ module system_top (
 	wire mem_round_key_en;
 	wire [127:0] write_roundkey, read_roundkey; 
 	
-	assign PT = 128'h3243F6A8885A308D313198A2E0370734;
+	//assign PT = 128'h3243F6A8885A308D313198A2E0370734;
+	assign PT = 128'h3925841d02dc09fbdc118597196a0b32;
 	assign OGKEY   = 128'h2B7E151628AED2A6ABF7158809CF4F3C;
 	
 	 //------------------------------------

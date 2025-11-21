@@ -31,7 +31,7 @@ module tb_system_top;
         .key(),           // unused (internally fixed)
         .done(done),
         .ciphertext(ciphertext),
-		  .dec(1'b0)
+		  .dec(1'b1)
     );
 
     initial begin
