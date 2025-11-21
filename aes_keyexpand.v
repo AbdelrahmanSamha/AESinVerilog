@@ -6,7 +6,7 @@ module aes_keyexpand (
 	 output reg store_key_mem,
 	 output reg [3:0] address, 
     output wire  [127:0] round_key,
-	 output wire finish
+	 output reg finish
 );
    
 	//-------------------------------------------------------------------------
@@ -151,12 +151,15 @@ module aes_keyexpand (
 				
 				INITSTOREMEM: next_state= EVAL; 
 
-            EVAL:   if (counter == 3'd4 && r_counter == 4'd10)
-								next_state = IDLE;
-								finish	= 1'b1;
-							else 
-								next_state = STORE;
-
+            EVAL:   begin 
+					if (counter == 3'd4 && r_counter == 4'd10) begin 
+						next_state = IDLE;
+						finish	= 1'b1;
+					end 
+					else begin 
+						next_state = STORE;
+					end  
+				end 
 
             STORE:  next_state = EVAL;       // back to EVAL
 
@@ -178,7 +181,8 @@ module aes_keyexpand (
         c_s			= 1'b0;
 		  temp_s 	= 1'b0;
 		  xor2_s		= 1'b0;
-		  store_key_mem = 1'b0; 
+		  store_key_mem = 1'b0;
+		  address = 4'b0; 
 		  next_counter = counter;
 		  next_r_counter = r_counter;
 		  next_iter_counter = iter_counter;

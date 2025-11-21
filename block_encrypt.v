@@ -2,25 +2,26 @@ module block_encrypt (
 		input 	clk, rst_n, 
 		input 	start,
 		input 	[127:0] plaintext, 
-		input 	[127:0] cipherkey, 
+		input 	[127:0] roundkey, 
 		output	[127:0] ciphertext,
+		output 	reg [3:0] key_address,
 		output 	reg done
 		);
 
-	parameter IDLE  		 = 2'b00,
-             INIT_ROUND  = 2'b01,
-             ITERATE		 = 2'b10,
-             FINAL 		 = 2'b11;
+	parameter IDLE  		 = 3'b000,
+				 SETUP 		 = 3'b001,
+             INIT_ROUND  = 3'b010,
+				 GET_KEY		 = 3'b011,
+             ITERATE		 = 3'b100,
+             FINAL 		 = 3'b101;
  
  
-	reg [1:0] state, next_state; 
+	reg [2:0] state, next_state; 
 	reg [3:0] round_counter, next_round_counter; 
 	reg [127:0] encstate, next_encstate;
 	wire [127:0] round_encstate;
 	reg final_round_signal;
-	wire [127:0] roundkey;
-	reg init_keyexpand; 
-	wire key_ready_from_keyexpand; 
+ 
    //------------------------------------
    // 1. State register (sequential logic)
    //------------------------------------	
@@ -48,26 +49,32 @@ module block_encrypt (
 		next_state = state; 
 		case (state)  
 			IDLE : begin 
-				if (start) next_state = INIT_ROUND; 
+				if (start) next_state = SETUP; 
 			end
+			
+			SETUP : begin 
+			next_state = INIT_ROUND;
+			end 
+			
 			INIT_ROUND : begin 
-				next_state = ITERATE; 
+				next_state = GET_KEY; 
 			end
+			
+			GET_KEY : begin 
+			next_state = ITERATE;
+			end
+			
 			ITERATE : begin 
-				if (round_counter < 4'd9) begin 
-					next_state = ITERATE; 
+				if (round_counter < 4'd10) begin 
+					next_state = GET_KEY; 
 				end 
 				else begin 
 					next_state = FINAL; 
 				end 
 			end
+			
 			FINAL :begin
-				if (key_ready_from_keyexpand) begin 
-				next_state = IDLE;
-				end 
-				else begin 
-					next_state = FINAL; 
-				end 
+				next_state = IDLE; 
 			end
 		endcase 
 	end 
@@ -78,32 +85,37 @@ module block_encrypt (
    always @(*) begin	
 		next_round_counter = round_counter;
 		next_encstate = encstate;
-		final_round_signal = 1'b0; 
-		init_keyexpand = 1'b0; 
-		 
+		final_round_signal = 1'b0;
+		key_address = 4'b0; 
 		case (state) 
 			IDLE: begin 
 				next_round_counter = 4'd0;
-				next_encstate      = 128'd0;
-				init_keyexpand     = 1'b0;
-				
-			end 
+				next_encstate      = 128'd0;	
+			end
+			
+			SETUP : begin 
+				key_address = 4'd0;
+			end 	
+			
 			INIT_ROUND: begin 
-				next_encstate = plaintext ^ cipherkey;
-				init_keyexpand = 1'b1;
-			end	
+				next_encstate = plaintext ^ roundkey;
+				next_round_counter = round_counter + 1; 
+			end
+			
+			GET_KEY : begin 
+				key_address = round_counter;
+			end			
+			
 			ITERATE:begin
-				if (key_ready_from_keyexpand) begin 
-					next_round_counter = round_counter + 1; 
-					next_encstate = round_encstate;
+				next_round_counter = round_counter + 1; 
+				next_encstate = round_encstate;
+				if (round_counter == 4'd10) begin 
+					key_address = round_counter;
 				end 
 			end	
 			FINAL: begin
-				if (key_ready_from_keyexpand) begin 
-					final_round_signal = 1'b1;
-					next_encstate = round_encstate;
-				end 
-				
+				final_round_signal = 1'b1;
+				next_encstate = round_encstate;
 			end	
 		endcase
 	end 
