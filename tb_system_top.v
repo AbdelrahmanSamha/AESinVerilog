@@ -30,7 +30,8 @@ module tb_system_top;
         .plaintext(),     // unused (internally fixed)
         .key(),           // unused (internally fixed)
         .done(done),
-        .ciphertext(ciphertext)
+        .ciphertext(ciphertext),
+		  .dec(1'b0)
     );
 
     initial begin

@@ -2,6 +2,7 @@ module system_top (
     input  wire         clk,
     input  wire         rst_n,
     input  wire         init_accel,
+	 input  wire         dec,
     input  wire [7:0] plaintext,
     input  wire [7:0] key,
     output  reg        done,
@@ -123,7 +124,8 @@ module system_top (
 		 	 .roundkey(read_roundkey), 
 			 .ciphertext(CT),
 			 .key_address(read_key_address),
-			 .done(block_encryption_finish)
+			 .done(block_encryption_finish),
+			 .dec(dec)
 		);
 	aes_keyexpand keyexp (
 	.clk(clk),

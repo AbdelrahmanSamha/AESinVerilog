@@ -1,6 +1,7 @@
 module block_encrypt (
 		input 	clk, rst_n, 
 		input 	start,
+		input 	dec,
 		input 	[127:0] plaintext, 
 		input 	[127:0] roundkey, 
 		output	[127:0] ciphertext,
@@ -122,7 +123,7 @@ module block_encrypt (
 	
 	
 	
-	aes_round round_trans(.state_in(encstate), .round_key(roundkey), .final_round(final_round_signal), .state_out(round_encstate));
+	aes_round round_trans(.state_in(encstate), .round_key(roundkey), .final_round(final_round_signal), .state_out(round_encstate),.dec(dec));
 	
 	
 	
