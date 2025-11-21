@@ -11,7 +11,8 @@ module system_top (
 
 
 	wire [127:0] PT,CT, OGKEY;
-	wire [3:0] read_key_address, write_key_address, key_address; 
+	wire [3:0] read_key_address, write_key_address;
+	wire [4:0] key_address;
 	wire mem_round_key_en;
 	wire [127:0] write_roundkey, read_roundkey; 
 	
@@ -138,7 +139,9 @@ module system_top (
 	.finish(key_expand_finish)
 	);
 	
+	
 	mem_round_keys keymem(.clock(clk), .address(key_address), .data(gen_roundkey), .wren(mem_round_key_en), .q(read_roundkey));
-	mux2to1 #(4) amux (.in0(write_key_address), .in1(read_key_address), .sel(mem_key_rw), .out(key_address));
-		
+	mux2to1 #(4) amux (.in0(write_key_address), .in1(read_key_address), .sel(mem_key_rw), .out(key_address[3:0]));
+	assign key_address[4] = 1'b0;
+	
 endmodule

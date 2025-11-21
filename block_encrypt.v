@@ -66,7 +66,7 @@ module block_encrypt (
 			end
 			
 			ITERATE : begin 
-				if (round_counter < 4'd10) begin 
+				if (round_counter < 4'd9) begin 
 					next_state = GET_KEY; 
 				end 
 				else begin 
@@ -110,8 +110,8 @@ module block_encrypt (
 			ITERATE:begin
 				next_round_counter = round_counter + 1; 
 				next_encstate = round_encstate;
-				if (round_counter == 4'd10) begin 
-					key_address = round_counter;
+				if (round_counter == 4'd9) begin 
+					key_address = 4'd10;
 				end 
 			end	
 			FINAL: begin
