@@ -29,9 +29,10 @@ module block_encrypt (
 	always @(posedge clk) begin 
 		if (!rst_n) begin 
 			state <= IDLE; 
-			round_counter <= 4'b0; 
 			done <= 1'b0;
 			encstate	<= 128'b0;
+			if (!dec) round_counter <= 4'd0;
+			else if (dec) round_counter <= 4'd10;
 		end 
 		else begin 
 		state <= next_state; 
@@ -66,8 +67,11 @@ module block_encrypt (
 			end
 			
 			ITERATE : begin 
-				if (round_counter < 4'd9) begin 
+				if ((!dec) && round_counter < 4'd9) begin 
 					next_state = GET_KEY; 
+				end 
+				else if ((dec) && round_counter > 4'd1) begin 
+					next_state = GET_KEY
 				end 
 				else begin 
 					next_state = FINAL; 
@@ -95,12 +99,22 @@ module block_encrypt (
 			end
 			
 			SETUP : begin 
-				key_address = 4'd0;
+				if (!dec) begin 
+					key_address = 4'd0;
+				end 
+				else if (dec) begin 
+					key_address = 4'd10; 
+				end
 			end 	
 			
 			INIT_ROUND: begin 
 				next_encstate = plaintext ^ roundkey;
-				next_round_counter = round_counter + 1; 
+				if (!dec) begin 
+					next_round_counter = round_counter + 1; 
+				end 
+				else if(dec) begin 
+					next_round_counter = round_counter - 1;
+				end 
 			end
 			
 			GET_KEY : begin 
@@ -108,11 +122,19 @@ module block_encrypt (
 			end			
 			
 			ITERATE:begin
-				next_round_counter = round_counter + 1; 
+			 
 				next_encstate = round_encstate;
-				if (round_counter == 4'd9) begin 
-					key_address = 4'd10;
-				end 
+				if (!dec)begin 
+					if (round_counter == 4'd9) begin 
+						key_address = 4'd10;
+						next_round_counter = round_counter + 1;
+					end
+				else if (dec) begin
+					if (round_counter == 4'd0)begin 
+						key_address = 4'd0; 
+						next_round_counter = round_counter - 1;
+					end 
+				end	
 			end	
 			FINAL: begin
 				final_round_signal = 1'b1;
