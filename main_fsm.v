@@ -119,12 +119,12 @@ module main_fsm (
 				end
                 
             RECV_KEY: begin 
-                if (key_count_reg == 4'b0)
+                if (rx_valid && key_count_reg == 4'b0)
                     next_state = RECV_BLOCK;
 				end 
             
             RECV_BLOCK: begin 
-                if (Data_count_reg == 4'b0)
+                if (rx_valid && Data_count_reg == 4'b0)
                     next_state = WAIT_AES;
 				end 
             
@@ -168,19 +168,21 @@ module main_fsm (
 				end 
             RECV_KEY: begin 
                 if (rx_valid) begin
-                    key_buffer[key_count_reg] = rx_byte;
+                    key_buffer[key_count] = rx_byte;
                     key_count = key_count - 4'b1;
+						  if (key_count_reg == 4'b0)
+								key_exp_start = 1'b1;
                 end
-					 if (key_count == 4'b0)
-						  key_exp_start = 1'b1;
+
             end
             RECV_BLOCK: begin 
                  if (rx_valid) begin
-                    Data_buffer[Data_count_reg] = rx_byte;
+                    Data_buffer[Data_count] = rx_byte;
                     Data_count = Data_count - 4'b1;
-                end
-					 if (Data_count == 4'b0)
-						  aes_start = 1'b1;
+						  if (Data_count_reg == 4'b0)
+								aes_start = 1'b1;
+					  end
+
             end
             WAIT_AES: begin 
 				
