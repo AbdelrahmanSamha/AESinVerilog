@@ -26,6 +26,7 @@ module system_top (
    wire tx_start_out;
    wire [127:0] data_block;
    wire [127:0] aes_key;
+	wire [127:0] gen_roundkey;
 	wire mem_key_rw; 
 
 	block_encrypt BE(
@@ -86,7 +87,7 @@ module system_top (
 	     uart_rx u_uart_rx (
         .clk(clk),
         .reset(rst_n),
-        .uart_rx(),
+        .uart_rx(uart_rx),
         .rx_byte(rx_byte),
         .rx_valid(rx_valid)
     );
@@ -96,7 +97,7 @@ module system_top (
         .reset(rst_n),
         .tx_start(tx_start_out),     
         .tx_byte(tx_byte_out),       
-        .uart_tx(),      
+        .uart_tx(uart_tx),      
         .tx_ready(tx_ready)          
     );
 endmodule
