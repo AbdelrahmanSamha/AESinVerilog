@@ -59,7 +59,7 @@ module uart_tx (
         case (tx_state)
 
             TX_IDLE: begin
-                if (!tx_start)
+                if (tx_start)
                     next_tx_state = TX_START;
                 else
                     next_tx_state = TX_IDLE;
@@ -97,7 +97,7 @@ module uart_tx (
                 tx_reg_next   = 1'b1;
                 tx_ready_next = 1'b1;
 
-                if (!tx_start) begin
+                if (tx_start) begin
                     tx_ready_next = 1'b0;
                     tx_shift_next = tx_byte;
                     tx_bits_next  = 4'd0;
