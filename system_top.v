@@ -10,7 +10,7 @@ module system_top (
 );
 
 
-	wire [127:0] PT,CT, OGKEY;
+	wire [127:0] CT;
 	wire [3:0] read_key_address, write_key_address;
 	wire [4:0] key_address;
 	wire mem_round_key_en;
@@ -80,7 +80,8 @@ module system_top (
         .key_exp_start_out(key_exp_start_out),
         .tx_start_out(tx_start_out),
         .data_block(data_block),
-        .aes_key(aes_key)
+        .aes_key(aes_key),
+		  .mem_key_rw_out(mem_key_rw)
     );
 	 
 	     uart_rx u_uart_rx (

@@ -15,6 +15,8 @@ module main_fsm (
 	output wire key_exp_start_out,
 	output wire tx_start_out,
 	
+	output wire mem_key_rw_out,
+	
 	output wire [127:0] data_block,
 	output wire [127:0] aes_key
 );
@@ -45,6 +47,7 @@ module main_fsm (
 	 reg key_exp_start;
 	 reg tx_start; 
 	 
+	 reg mem_key_rw;
 	 
 	 
 	 assign key_exp_start_out = key_exp_start_reg;
@@ -52,6 +55,8 @@ module main_fsm (
 	 assign tx_start_out = tx_start_reg; 
 	 
 	 assign tx_byte_out = tx_byte_reg;
+	 
+	 assign mem_key_rw_out = mem_key_rw;
 	 
 	 
 	 assign aes_key = {
@@ -109,7 +114,7 @@ module main_fsm (
         next_state = curr_state; 
         case (curr_state)  
             IDLE : begin
-					if (rx_valid && start)
+					if (start)
 						next_state = RECV_KEY;
 				end
                 
@@ -149,6 +154,7 @@ module main_fsm (
 				key_exp_start = key_exp_start_reg;
 				tx_byte = tx_byte_reg;
 				tx_start = 1'b0;
+				mem_key_rw = 1'b0;
         
         case (curr_state)  
             IDLE : begin 
@@ -177,6 +183,8 @@ module main_fsm (
 						  aes_start = 1'b1;
             end
             WAIT_AES: begin 
+				
+				mem_key_rw = 1'b1;
 
 				end
 				SEND_RESULT: begin 
