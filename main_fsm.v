@@ -13,7 +13,7 @@ module main_fsm (
 	
 	output wire aes_start_out,
 	output wire key_exp_start_out,
-	output wire tx_start_out,
+	output reg tx_start,
 	
 	output wire mem_key_rw_out,
 	
@@ -40,20 +40,17 @@ module main_fsm (
 	 
 	 reg key_exp_start_reg;
 	 reg aes_start_reg;
-	 reg tx_start_reg;
 	 
 	 reg [7:0] tx_byte, tx_byte_reg;
 				
 	 reg aes_start; 
 	 reg key_exp_start;
-	 reg tx_start; 
 	 
 	 reg mem_key_rw;
 	 reg we_out_block;
 	 
 	 assign key_exp_start_out = key_exp_start_reg;
-	 assign aes_start_out = aes_start_reg; 
-	 assign tx_start_out = tx_start_reg; 
+	 assign aes_start_out = aes_start_reg;  
 	 
 	 assign tx_byte_out = tx_byte_reg;
 	 
@@ -111,7 +108,6 @@ module main_fsm (
 				key_exp_start_reg <= 1'b0;
 				aes_start_reg <= 1'b0;
 				
-				tx_start_reg <= 1'b0;
 				tx_byte_reg <= 8'b0; 
         end 
         else begin 
@@ -125,7 +121,7 @@ module main_fsm (
 				key_exp_start_reg <= key_exp_start;	
 				aes_start_reg <= aes_start;
 				
-				tx_start_reg <= tx_start;	
+
 				tx_byte_reg <= tx_byte;	
         end 
     end 

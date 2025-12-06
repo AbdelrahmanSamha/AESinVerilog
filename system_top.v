@@ -78,7 +78,7 @@ module system_top (
         .tx_byte_out(tx_byte_out),
         .aes_start_out(aes_start_out),
         .key_exp_start_out(key_exp_start_out),
-        .tx_start_out(tx_start_out),
+        .tx_start(tx_start_out),
         .data_block(data_block),
         .aes_key(aes_key),
 		  .mem_key_rw_out(mem_key_rw)
