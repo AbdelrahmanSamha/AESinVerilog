@@ -5,7 +5,7 @@ module system_top (
 	 input  wire         dec,
 	 input  wire 			uart_rx,       // Incoming serial line
     output wire 			uart_tx,       // Outgoing serial line
-    output  reg        done
+    output  reg        block_encryption_finish
 );
 
 
