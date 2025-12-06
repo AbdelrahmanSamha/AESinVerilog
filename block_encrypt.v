@@ -22,6 +22,7 @@ module block_encrypt (
 	reg [127:0] encstate, next_encstate;
 	wire [127:0] round_encstate;
 	reg final_round_signal;
+	reg next_done;
  
    //------------------------------------
    // 1. State register (sequential logic)
@@ -38,9 +39,7 @@ module block_encrypt (
 		state <= next_state; 
 		encstate <= next_encstate; 
 		round_counter <= next_round_counter;
-		if (final_round_signal) begin 
-				done <= 1'b1;
-		end 	
+		done <= next_done;	
 		end 
 	end 
 
@@ -91,10 +90,12 @@ module block_encrypt (
 		next_round_counter = round_counter;
 		next_encstate = encstate;
 		final_round_signal = 1'b0;
-		key_address = 4'b0; 
+		key_address = 4'b0;
+		next_done	= done;
 		case (state) 
 			IDLE: begin
-				next_encstate      = 128'd0;	
+				next_encstate      = 128'd0;
+				next_done 			 =1'b0;
 			end
 			
 			SETUP : begin 
@@ -140,6 +141,7 @@ module block_encrypt (
 			FINAL: begin
 				final_round_signal = 1'b1;
 				next_encstate = round_encstate;
+				next_done =1'b1;
 			end	
 		endcase
 	end 
