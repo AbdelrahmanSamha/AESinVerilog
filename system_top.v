@@ -3,10 +3,9 @@ module system_top (
     input  wire         rst_n,
     input  wire         init_accel,
 	 input  wire         dec,
-    input  wire [7:0] plaintext,
-    input  wire [7:0] key,
-    output  reg        done,
-    output 	  [7:0] ciphertext
+	 input  wire 			uart_rx,       // Incoming serial line
+    output wire 			uart_tx,       // Outgoing serial line
+    output  reg        done
 );
 
 
