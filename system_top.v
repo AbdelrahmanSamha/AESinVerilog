@@ -17,8 +17,8 @@ module system_top (
 	wire [127:0] write_roundkey, read_roundkey; 
 	
 	//assign PT = 128'h3243F6A8885A308D313198A2E0370734;
-	assign PT = 128'h3925841d02dc09fbdc118597196a0b32;
-	assign OGKEY   = 128'h2B7E151628AED2A6ABF7158809CF4F3C;
+	//assign PT = 128'h3925841d02dc09fbdc118597196a0b32;
+	//assign OGKEY   = 128'h2B7E151628AED2A6ABF7158809CF4F3C;
 	
 	 //------------------------------------
     // State encoding and definistions 
@@ -57,7 +57,7 @@ module system_top (
 		done = 1'b0;	
 		case (state)
 			IDLE : begin 
-				if (init_accel) begin 
+				if (aes_start_out) begin 
 					next_state = GEN_KEYS;
 				end 
 				else begin 
@@ -122,7 +122,7 @@ module system_top (
 		 	.clk(clk),
 			.rst_n(rst_n), 
 		 	.start(start_block_encryption),
-		 	 .plaintext(PT), 
+		 	 .plaintext(data_block), 
 		 	 .roundkey(read_roundkey), 
 			 .ciphertext(CT),
 			 .key_address(read_key_address),
@@ -132,8 +132,8 @@ module system_top (
 	aes_keyexpand keyexp (
 	.clk(clk),
 	.rst_n(rst_n),
-	.init(init_key_expantion),
-	.og_key(OGKEY),
+	.init(key_exp_start_out),
+	.og_key(aes_key),
 	.store_key_mem(mem_round_key_en),
 	.address(write_key_address),
 	.round_key(gen_roundkey),
@@ -145,4 +145,56 @@ module system_top (
 	mux2to1 #(4) amux (.in0(write_key_address), .in1(read_key_address), .sel(mem_key_rw), .out(key_address[3:0]));
 	assign key_address[4] = 1'b0;
 	
+	
+	
+	
+	 wire rx_valid;
+    wire aes_done;
+    wire tx_ready;
+    wire [7:0] rx_byte;
+    wire [127:0] out_block;
+
+    wire [7:0] tx_byte_out;
+    wire aes_start_out;
+    wire key_exp_start_out;
+    wire tx_start_out;
+    wire [127:0] data_block;
+    wire [127:0] aes_key;
+
+    // -----------------------
+    // Instantiate main_fsm
+    // -----------------------
+    main_fsm u_main_fsm (
+        .clk(clk),
+        .reset(rst_n),
+		  .start(init_accel),
+        .rx_valid(rx_valid),
+        .aes_done(block_encryption_finish),
+        .tx_ready(tx_ready),
+        .rx_byte(rx_byte),
+        .out_block(CT),
+        .tx_byte_out(tx_byte_out),
+        .aes_start_out(aes_start_out),
+        .key_exp_start_out(key_exp_start_out),
+        .tx_start_out(tx_start_out),
+        .data_block(data_block),
+        .aes_key(aes_key)
+    );
+	 
+	     uart_rx u_uart_rx (
+        .clk(clk),
+        .reset(rst_n),
+        .uart_rx(),
+        .rx_byte(rx_byte),
+        .rx_valid(rx_valid)
+    );
+
+	    uart_tx u_uart_tx (
+        .clk(clk),
+        .reset(rst_n),
+        .tx_start(tx_start_out),     
+        .tx_byte(tx_byte_out),       
+        .uart_tx(),      
+        .tx_ready(tx_ready)          
+    );
 endmodule
