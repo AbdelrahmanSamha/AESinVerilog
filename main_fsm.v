@@ -30,8 +30,9 @@ module main_fsm (
 
 	 reg [2:0] curr_state, next_state;
 	
-    reg [7:0] key_buffer   [0:15];
-    reg [7:0] Data_buffer [0:15];
+    reg [7:0] key_buffer   [15:0];
+    reg [7:0] Data_buffer [15:0];
+    reg [7:0] out_block_internal [15:0];
 
     reg [3:0] key_count, key_count_reg;
     reg [3:0] Data_count, Data_count_reg;
@@ -48,7 +49,7 @@ module main_fsm (
 	 reg tx_start; 
 	 
 	 reg mem_key_rw;
-	 
+	 reg we_out_block;
 	 
 	 assign key_exp_start_out = key_exp_start_reg;
 	 assign aes_start_out = aes_start_reg; 
@@ -72,6 +73,28 @@ module main_fsm (
 		Data_buffer[7],  Data_buffer[6],  Data_buffer[5],  Data_buffer[4],
 		Data_buffer[3],  Data_buffer[2],  Data_buffer[1],  Data_buffer[0]
 	};
+
+	
+	always @(posedge clk) begin
+		 if (we_out_block) begin
+			  out_block_internal[15] <= out_block[127:120];
+			  out_block_internal[14] <= out_block[119:112];
+			  out_block_internal[13] <= out_block[111:104];
+			  out_block_internal[12] <= out_block[103:96];
+			  out_block_internal[11] <= out_block[95:88];
+			  out_block_internal[10] <= out_block[87:80];
+			  out_block_internal[9]  <= out_block[79:72];
+			  out_block_internal[8]  <= out_block[71:64];
+			  out_block_internal[7]  <= out_block[63:56];
+			  out_block_internal[6]  <= out_block[55:48];
+			  out_block_internal[5]  <= out_block[47:40];
+			  out_block_internal[4]  <= out_block[39:32];
+			  out_block_internal[3]  <= out_block[31:24];
+			  out_block_internal[2]  <= out_block[23:16];
+			  out_block_internal[1]  <= out_block[15:8];
+			  out_block_internal[0]  <= out_block[7:0];
+		 end
+	end
 
     // ------------------------------------
     // 1. State register
@@ -155,7 +178,7 @@ module main_fsm (
 				tx_byte = tx_byte_reg;
 				tx_start = 1'b0;
 				mem_key_rw = 1'b0;
-        
+				we_out_block = 1'b0;
         case (curr_state)  
             IDLE : begin 
                 key_count   = 4'd15;
@@ -187,12 +210,13 @@ module main_fsm (
             WAIT_AES: begin 
 				
 				mem_key_rw = 1'b1;
+				we_out_block = 1'b1;
 
 				end
 				SEND_RESULT: begin 
                 if (tx_ready) begin
 						tx_start = 1'b1; 
-						tx_byte = out_block[127 - {send_count, 3'b000} -: 8];
+						tx_byte = out_block_internal[send_count];
 						send_count = send_count - 4'b1;
                 end
 					 else 
