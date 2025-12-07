@@ -7,6 +7,18 @@ module system_top (
     output wire 			uart_tx,       // Outgoing serial line
     output  wire        top_fsm_done
 );
+	//-------------------------------------------------------------
+	//This is the toplevel module of the core, it instantiates all the important components
+	//such as the Main_FSM, which is the brains of the core, UART_TX and UART_RT for communication
+	//as well as the block encryption which is in ECB mode, and finnaly keyexpantion, which is responsible 
+	//for generating the round keys to be used by the blockencryption module. 
+	//also the block ram used here stores the round keys for a given run.
+	//
+	//Team XLR8:
+	//Abdelrahman Samha.
+	//Ehab Sbieh.
+	//-------------------------------------------------------------
+
 
 
 	wire [127:0] CT;
