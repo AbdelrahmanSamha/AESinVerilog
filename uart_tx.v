@@ -36,8 +36,8 @@ module uart_tx (
             tx_bits  <= 4'd0;
             tx_shift <= 8'd0;
 
-            tx_reg   = 1'b1;
-            tx_ready_reg = 1'b1;
+            tx_reg   <= 1'b1;
+            tx_ready_reg <= 1'b1;
         end 
         else begin
             tx_state <= next_tx_state;

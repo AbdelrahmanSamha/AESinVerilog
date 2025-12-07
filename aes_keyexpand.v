@@ -10,32 +10,8 @@ module aes_keyexpand (
 );
    
 	//-------------------------------------------------------------------------
-	//	Keyexpantion happens in parallel of the rounds, we are trying to  
-	// generate keys as we go in the algorithm in a way such that we 
-	// dont require a large array of registers to hold the 44 key words. 
-	// and because processing the round keys does consume cycles, we want 
-	// to hide this latency by doing the following schema : 
-	// 
-	//							keys to use 		keys in process 
-	//	
-	// initial round  	original key 		round 1 key 
-	// round 1 				round 1 key 		round 2 key 
-	// round 2 				round 2 key 		round 3 key 
-	// .						.						.
-	// .						.						.
-	// .						.						.
-	// round 9 				round 9 key 		final round key 
-	// round 10 			round 10 key		IDLE
-	//
-	// This design is really good because by using 4-32bit registers 
-	// we can simply forget about previous keys as we advance in the rounds. 
-	// also we are hiding the latency of the dependence between each round and 
-	// its required key, such that in round x we would be processing round x+1 
-	// key, so whenever a round starts it can just find its keys ready to use. 
-	// saving significant area (from 1,408b to 128b) while also being able 
-	// to read the key values quickly because the 4 registers will be directly 
-	// connected to the round processing core, instead of having to look up 
-	// an address. 
+	//	Keyexpantion generates the round keys and stores them in block_RAM. 
+	// this module is controlled by the main_fsm.v module. 
 	//-------------------------------------------------------------------------
 	
 	//-------------------------------------------------------------------------
@@ -230,11 +206,11 @@ module aes_keyexpand (
 
             EVAL: begin
                 if (counter < 3'd4)begin 
-						next_counter = counter + 1;   	
+						next_counter = counter + 3'd1;   	
 					 end 
 					 else if (counter == 3'd4) begin 
 						next_counter = 3'd1;
-						next_r_counter = r_counter +1;
+						next_r_counter = r_counter +4'd1;
 						store_key_mem = 1'b1;
 						address = r_counter ;
 						
@@ -252,7 +228,7 @@ module aes_keyexpand (
 					 b_s			= 1'b1;
 					 c_s			= 1'b1;
 					 temp_s 		= 1'b1;
-					 next_iter_counter = iter_counter +1;
+					 next_iter_counter = iter_counter + 6'd1;
 					 if (iter_counter[1:0]== 2'b00) begin 
 						xor2_s = 1'b1; 
 					 end 

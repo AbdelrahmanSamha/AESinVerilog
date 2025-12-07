@@ -13,12 +13,10 @@ module system_top (
 	wire [3:0] read_key_address, write_key_address;
 	wire [4:0] key_address;
 	wire mem_round_key_en;
-	wire [127:0] write_roundkey, read_roundkey; 
+	wire [127:0] read_roundkey; 
 	wire rx_valid;
-   wire aes_done;
    wire tx_ready;
    wire [7:0] rx_byte;
-   wire [127:0] out_block;
 
    wire [7:0] tx_byte_out;
    wire aes_start_out;
@@ -27,7 +25,8 @@ module system_top (
    wire [127:0] data_block;
    wire [127:0] aes_key;
 	wire [127:0] gen_roundkey;
-	wire mem_key_rw; 
+	wire mem_key_rw;
+	wire 	block_encryption_finish, key_expand_finish;
 
 	block_encrypt BE(
 		 	.clk(clk),
@@ -75,7 +74,7 @@ module system_top (
         .tx_ready(tx_ready),
         .rx_byte(rx_byte),
         .out_block(CT),
-        .tx_byte_out(tx_byte_out),
+        .tx_byte(tx_byte_out),
         .aes_start_out(aes_start_out),
         .key_exp_start_out(key_exp_start_out),
         .tx_start(tx_start_out),

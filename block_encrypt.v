@@ -96,6 +96,8 @@ module block_encrypt (
 			IDLE: begin
 				next_encstate      = 128'd0;
 				next_done 			 =1'b0;
+				if (!dec) next_round_counter <= 4'd0;
+					else if (dec) next_round_counter <= 4'd10;
 			end
 			
 			SETUP : begin 
@@ -110,10 +112,10 @@ module block_encrypt (
 			INIT_ROUND: begin 
 				next_encstate = plaintext ^ roundkey;
 				if (!dec) begin 
-					next_round_counter = round_counter + 1; 
+					next_round_counter = round_counter + 4'd1; 
 				end 
 				else if(dec) begin 
-					next_round_counter = round_counter - 1;
+					next_round_counter = round_counter - 4'd1;
 				end 
 			end
 			
@@ -125,14 +127,14 @@ module block_encrypt (
 			 
 				next_encstate = round_encstate;
 				if (!dec)begin 
-					next_round_counter = round_counter + 1;
+					next_round_counter = round_counter + 4'd1;
 					if (round_counter == 4'd9) begin 
 						key_address = 4'd10;
 						
 					end
 				end
 				else if (dec) begin
-					next_round_counter = round_counter - 1;
+					next_round_counter = round_counter - 4'd1;
 					if (round_counter == 4'd0)begin 
 						key_address = 4'd0; 
 					end 

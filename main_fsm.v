@@ -9,7 +9,7 @@ module main_fsm (
 	input tx_ready,
 	input [7:0] rx_byte,
 	input [127:0] out_block,
-	output wire [7:0] tx_byte,
+	output reg [7:0] tx_byte,
 	
 	output wire aes_start_out,
 	output wire key_exp_start_out,
@@ -22,6 +22,13 @@ module main_fsm (
 	output wire [127:0] data_block,
 	output wire [127:0] aes_key
 );
+	//-------------------------------------------------------------------------
+	//	 Main_FSM is the brain of the core, it controller the recieved Bytes from the UART_rx
+	// Organizes them and controlls the keyexpantion and block encryption modules. 
+	// and when everything is done and ready to be transmitted it organizes the sending 
+	// through the UART_tx module. 
+	// module generates a done signal when it finishs sending a block. 
+	//-------------------------------------------------------------------------
 
     parameter IDLE        = 3'b000, 
               RECV_KEY    = 3'b001, 

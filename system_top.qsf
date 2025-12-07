@@ -84,7 +84,6 @@ set_global_assignment -name VERILOG_FILE block_encrypt.v
 set_global_assignment -name VERILOG_FILE tb_block_encrypt.v
 set_global_assignment -name VERILOG_FILE tb_aes_keyexpand.v
 set_global_assignment -name QIP_FILE mem_round_keys.qip
-set_global_assignment -name VERILOG_FILE tb_system_top.v
 set_global_assignment -name VERILOG_FILE main_fsm.v
 set_global_assignment -name VERILOG_FILE tb_system_top_FSM.v
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_system_top_FSM -section_id eda_simulation
@@ -97,5 +96,5 @@ set_location_assignment PIN_C11 -to dec
 set_location_assignment PIN_W10 -to uart_tx
 set_location_assignment PIN_V10 -to uart_rx
 set_location_assignment PIN_P11 -to clk
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_location_assignment PIN_A8 -to top_fsm_done
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

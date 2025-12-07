@@ -40,18 +40,13 @@ module tb_system_top_FSM;
         input [7:0] byte;
         integer i;
         begin
-            // Start bit
-            uart_rx = 1'b0;
+            uart_rx = 1'b0;             // start bit
             #(BIT_TIME);
-
-            // Data bits (LSB first)
             for (i = 0; i < 8; i = i + 1) begin
-                uart_rx = byte[i];
+                uart_rx = byte[i];      // LSB first
                 #(BIT_TIME);
             end
-
-            // Stop bit
-            uart_rx = 1'b1;
+            uart_rx = 1'b1;             // stop bit
             #(BIT_TIME);
         end
     endtask
@@ -61,32 +56,105 @@ module tb_system_top_FSM;
         output [7:0] byte;
         integer i;
         begin
-            // Wait for start bit
-            wait (uart_tx == 1'b0);
+            wait (uart_tx == 1'b0);    // wait for start bit
             #(BIT_TIME + BIT_TIME/2);
-
-            // Sample data bits
             for (i = 0; i < 8; i = i + 1) begin
                 byte[i] = uart_tx;
                 #(BIT_TIME);
             end
-
-            // Stop bit
-            #(BIT_TIME);
+            #(BIT_TIME/2);              // stop bit sampling
         end
     endtask
 
+			// ---------------- SEND / RECEIVE AES TASK ----------------
+		task run_aes_test;
+			input  [127:0] key;
+			input  [127:0] block;
+			input  [127:0] expected; // optional expected ciphertext
+		
+			integer i;
+			reg [7:0] key_bytes  [0:15];
+			reg [7:0] block_bytes[0:15];
+			reg [127:0] cipher_combined;
+			integer k;
+		
+		begin
+			// Split 128-bit key/block into bytes
+			for (i = 0; i < 16; i = i + 1) begin
+				key_bytes[i]   = key  [127 - i*8 -: 8];
+				block_bytes[i] = block[127 - i*8 -: 8];
+			end
+		
+			rx_count = 0;
+		
+			// Send AES key
+			for (i = 0; i < 16; i = i + 1)
+				uart_send_byte(key_bytes[i]);
+			#(BIT_TIME * 5);
+		
+			// Send plaintext block
+			for (i = 0; i < 16; i = i + 1)
+				uart_send_byte(block_bytes[i]);
+		
+			// Receive ciphertext
+			while (rx_count < 16) begin
+				uart_receive_byte(rx_byte);
+				cipher_bytes[rx_count] = rx_byte;
+				$display("RX[%0d] = %02x", rx_count, rx_byte);
+				rx_count = rx_count + 1;
+			end
+		
+		
+			//---------------------------------------------
+			// Print ciphertext
+			//---------------------------------------------
+			$display("\n=== AES-128 CIPHERTEXT ===");
+			$write("%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+				cipher_bytes[0],  cipher_bytes[1],  cipher_bytes[2],  cipher_bytes[3],
+				cipher_bytes[4],  cipher_bytes[5],  cipher_bytes[6],  cipher_bytes[7],
+				cipher_bytes[8],  cipher_bytes[9],  cipher_bytes[10], cipher_bytes[11],
+				cipher_bytes[12], cipher_bytes[13], cipher_bytes[14], cipher_bytes[15]
+			);
+		
+		
+			//---------------------------------------------
+			// Rebuild 128-bit cipher_combined
+			//---------------------------------------------
+			cipher_combined = 128'h0;
+			for (k = 0; k < 16; k = k + 1)
+				cipher_combined[127 - 8*k -: 8] = cipher_bytes[k];
+		
+		
+			//---------------------------------------------
+			// Expected output
+			//---------------------------------------------
+			if (expected !== 128'h0) begin
+				$display("Expected:");
+				$display("%032x", expected);
+			end
+		
+		
+			//---------------------------------------------
+			// Compare
+			//---------------------------------------------
+			if (cipher_combined === expected)
+				$display("CORRECT");
+			else
+				$display("INCORRECT");
+		
+		end
+		endtask
+
+
     // ---------------- MAIN TEST ----------------
     initial begin
-        // Init
         clk = 0;
         rst_n = 0;
         uart_rx = 1'b1;
         init_accel = 0;
         dec = 0;  // encryption
-        rx_count = 0;
 
-        // Reset
+        // Reset DUT
         #200;
         rst_n = 1;
         #200;
@@ -94,66 +162,58 @@ module tb_system_top_FSM;
         // Start system
         init_accel = 1;
         #40;
-        init_accel = 0;
+		  	$display("----------------------------------------------");
+			$display("-----------Encryption TESTING-----------------");
+			$display("----------------------------------------------");
 
-        // ---------- SEND AES KEY ----------
-        uart_send_byte(8'h00);
-        uart_send_byte(8'h01);
-        uart_send_byte(8'h02);
-        uart_send_byte(8'h03);
-        uart_send_byte(8'h04);
-        uart_send_byte(8'h05);
-        uart_send_byte(8'h06);
-        uart_send_byte(8'h07);
-        uart_send_byte(8'h08);
-        uart_send_byte(8'h09);
-        uart_send_byte(8'h0A);
-        uart_send_byte(8'h0B);
-        uart_send_byte(8'h0C);
-        uart_send_byte(8'h0D);
-        uart_send_byte(8'h0E);
-        uart_send_byte(8'h0F);
+        // ---------- RUN MULTIPLE AES ENcryption TESTS ----------
+		  $display("--------------------Begin new TEST--------------------------");
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, //key
+                     128'h6bc1bee22e409f96e93d7e117393172a, //block
+                     128'h3ad77bb40d7a3660a89ecaf32466ef97);//expected 
+							
+		  $display("--------------------Begin new TEST--------------------------");
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, 
+                     128'hae2d8a571e03ac9c9eb76fac45af8e51, 
+                     128'hf5d3d58503b9699de785895a96fdbaaf);
+							
+		  $display("--------------------Begin new TEST--------------------------");
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, 
+                     128'h30c81c46a35ce411e5fbc1191a0a52ef, 
+                     128'h43b1cd7f598ece23881b00e3ed030688);
+							
+		  $display("--------------------Begin new TEST--------------------------");
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, 
+                     128'hf69f2445df4f9b17ad2b417be66c3710, 
+                     128'h7b0c785e27e8ad3f8223207104725dd4);
+			
+			// ---------- RUN MULTIPLE AES Decryption TESTS ----------
+			$display("----------------------------------------------");
+			$display("-----------Decryption TESTING-----------------");
+			$display("----------------------------------------------");
+			#40;
+			dec = 1;  // decryption
+			#40;
+        // ---------- RUN MULTIPLE AES ENcryption TESTS ----------
+		  $display("--------------------Begin new TEST--------------------------");
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, //key
+                     128'h3ad77bb40d7a3660a89ecaf32466ef97, //block
+                     128'h6bc1bee22e409f96e93d7e117393172a);//expected 
 
-        #(BIT_TIME * 5);
-
-        // ---------- SEND PLAINTEXT ----------
-        uart_send_byte(8'h00);
-        uart_send_byte(8'h11);
-        uart_send_byte(8'h22);
-        uart_send_byte(8'h33);
-        uart_send_byte(8'h44);
-        uart_send_byte(8'h55);
-        uart_send_byte(8'h66);
-        uart_send_byte(8'h77);
-        uart_send_byte(8'h88);
-        uart_send_byte(8'h99);
-        uart_send_byte(8'hAA);
-        uart_send_byte(8'hBB);
-        uart_send_byte(8'hCC);
-        uart_send_byte(8'hDD);
-        uart_send_byte(8'hEE);
-        uart_send_byte(8'hFF);
-
-        // ---------- RECEIVE CIPHERTEXT ----------
-        while (rx_count < 16) begin
-            uart_receive_byte(rx_byte);
-            cipher_bytes[rx_count] = rx_byte;
-            $display("TX[%0d] = %02x", rx_count, rx_byte);
-            rx_count = rx_count + 1;
-        end
-
-        // ---------- PRINT RESULT ----------
-        $display("\n=== AES-128 CIPHERTEXT ===");
-        $display("%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            cipher_bytes[0],  cipher_bytes[1],  cipher_bytes[2],  cipher_bytes[3],
-            cipher_bytes[4],  cipher_bytes[5],  cipher_bytes[6],  cipher_bytes[7],
-            cipher_bytes[8],  cipher_bytes[9],  cipher_bytes[10], cipher_bytes[11],
-            cipher_bytes[12], cipher_bytes[13], cipher_bytes[14], cipher_bytes[15]
-        );
-
-        // Reference check (optional manual compare)
-        $display("Expected: 69c4e0d86a7b0430d8cdb78070b4c55a");
-
+		  $display("--------------------Begin new TEST--------------------------");
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, 
+                     128'hf5d3d58503b9699de785895a96fdbaaf, 
+                     128'hae2d8a571e03ac9c9eb76fac45af8e51);
+							
+		  $display("--------------------Begin new TEST--------------------------");		
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, 
+                     128'h43b1cd7f598ece23881b00e3ed030688, 
+                     128'h30c81c46a35ce411e5fbc1191a0a52ef);
+							
+		  $display("--------------------Begin new TEST--------------------------");	
+        run_aes_test(128'h2b7e151628aed2a6abf7158809cf4f3c, 
+                     128'h7b0c785e27e8ad3f8223207104725dd4, 
+                     128'hf69f2445df4f9b17ad2b417be66c3710);			
         #200;
         $stop;
     end
