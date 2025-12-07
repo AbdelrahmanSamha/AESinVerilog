@@ -9,7 +9,7 @@ module main_fsm (
 	input tx_ready,
 	input [7:0] rx_byte,
 	input [127:0] out_block,
-	output wire [7:0] tx_byte_out,
+	output wire [7:0] tx_byte,
 	
 	output wire aes_start_out,
 	output wire key_exp_start_out,
@@ -42,8 +42,6 @@ module main_fsm (
 	 
 	 reg key_exp_start_reg;
 	 reg aes_start_reg;
-	 
-	 reg [7:0] tx_byte, tx_byte_reg;
 				
 	 reg aes_start; 
 	 reg key_exp_start;
@@ -57,8 +55,6 @@ module main_fsm (
 	 
 	 assign key_exp_start_out = key_exp_start_reg;
 	 assign aes_start_out = aes_start_reg;  
-	 
-	 assign tx_byte_out = tx_byte_reg;
 	 
 	 assign mem_key_rw_out = mem_key_rw;
 	 
@@ -79,6 +75,25 @@ module main_fsm (
 
 	
 	always @(posedge clk) begin
+		 if (!reset) begin
+			 out_block_internal[0]  <= 8'd0;
+			 out_block_internal[1]  <= 8'd0;
+			 out_block_internal[2]  <= 8'd0;
+			 out_block_internal[3]  <= 8'd0;
+			 out_block_internal[4]  <= 8'd0;
+			 out_block_internal[5]  <= 8'd0;
+			 out_block_internal[6]  <= 8'd0;
+			 out_block_internal[7]  <= 8'd0;
+			 out_block_internal[8]  <= 8'd0;
+			 out_block_internal[9]  <= 8'd0;
+			 out_block_internal[10] <= 8'd0;
+			 out_block_internal[11] <= 8'd0;
+			 out_block_internal[12] <= 8'd0;
+			 out_block_internal[13] <= 8'd0;
+			 out_block_internal[14] <= 8'd0;
+			 out_block_internal[15] <= 8'd0;
+		 
+		 end
 		 if (we_out_block) begin
 			  out_block_internal[15] <= out_block[127:120];
 			  out_block_internal[14] <= out_block[119:112];
@@ -105,16 +120,50 @@ module main_fsm (
     always @(posedge clk) begin 
         if (!reset) begin
 		  
-				curr_state <= IDLE;
+			 curr_state <= IDLE;
 				
-				key_count_reg <= 4'b0;
-				Data_count_reg <= 4'b0; 
-				send_count_reg <= 4'b0; 
+			 key_count_reg <= 4'b0;
+			 Data_count_reg <= 4'b0; 
+			 send_count_reg <= 4'b0; 
 				
-				key_exp_start_reg <= 1'b0;
-				aes_start_reg <= 1'b0;
-				
-				tx_byte_reg <= 8'b0; 
+			 key_exp_start_reg <= 1'b0;
+			 aes_start_reg <= 1'b0;
+			
+
+			 key_buffer[0]  <= 8'd0;
+			 key_buffer[1]  <= 8'd0;
+			 key_buffer[2]  <= 8'd0;
+			 key_buffer[3]  <= 8'd0;
+			 key_buffer[4]  <= 8'd0;
+			 key_buffer[5]  <= 8'd0;
+			 key_buffer[6]  <= 8'd0;
+			 key_buffer[7]  <= 8'd0;
+			 key_buffer[8]  <= 8'd0;
+			 key_buffer[9]  <= 8'd0;
+			 key_buffer[10] <= 8'd0;
+			 key_buffer[11] <= 8'd0;
+			 key_buffer[12] <= 8'd0;
+			 key_buffer[13] <= 8'd0;
+			 key_buffer[14] <= 8'd0;
+			 key_buffer[15] <= 8'd0;
+
+			 Data_buffer[0]  <= 8'd0;
+			 Data_buffer[1]  <= 8'd0;
+			 Data_buffer[2]  <= 8'd0;
+			 Data_buffer[3]  <= 8'd0;
+			 Data_buffer[4]  <= 8'd0;
+			 Data_buffer[5]  <= 8'd0;
+			 Data_buffer[6]  <= 8'd0;
+			 Data_buffer[7]  <= 8'd0;
+			 Data_buffer[8]  <= 8'd0;
+			 Data_buffer[9]  <= 8'd0;
+			 Data_buffer[10] <= 8'd0;
+			 Data_buffer[11] <= 8'd0;
+			 Data_buffer[12] <= 8'd0;
+			 Data_buffer[13] <= 8'd0;
+			 Data_buffer[14] <= 8'd0;
+			 Data_buffer[15] <= 8'd0;
+	
         end 
         else begin 
 		  
@@ -126,9 +175,7 @@ module main_fsm (
 				
 				key_exp_start_reg <= key_exp_start;	
 				aes_start_reg <= aes_start;
-				
-
-				tx_byte_reg <= tx_byte;	
+			
 				
             if (rx_valid && curr_state == RECV_KEY) begin
 					key_buffer[key_count_reg] = rx_byte;
@@ -187,7 +234,7 @@ module main_fsm (
 				
 				aes_start = 1'b0;
 				key_exp_start = key_exp_start_reg;
-				tx_byte = tx_byte_reg;
+				tx_byte = 8'b0;
 				tx_start = 1'b0;
 				mem_key_rw = 1'b0;
 				we_out_block = 1'b0;
