@@ -17,6 +17,8 @@ module main_fsm (
 	
 	output wire mem_key_rw_out,
 	
+	output wire top_fsm_done_out,
+	
 	output wire [127:0] data_block,
 	output wire [127:0] aes_key
 );
@@ -48,6 +50,10 @@ module main_fsm (
 	 
 	 reg mem_key_rw;
 	 reg we_out_block;
+	 
+	 reg top_fsm_done;
+	 
+	 assign top_fsm_done_out = top_fsm_done;
 	 
 	 assign key_exp_start_out = key_exp_start_reg;
 	 assign aes_start_out = aes_start_reg;  
@@ -123,6 +129,14 @@ module main_fsm (
 				
 
 				tx_byte_reg <= tx_byte;	
+				
+            if (rx_valid && curr_state == RECV_KEY) begin
+					key_buffer[key_count] = rx_byte;
+				end
+				
+				if (rx_valid && curr_state == RECV_BLOCK) begin
+				   Data_buffer[Data_count] = rx_byte;
+				end
         end 
     end 
 
@@ -131,6 +145,7 @@ module main_fsm (
     // ------------------------------------
     always @(*) begin 
         next_state = curr_state; 
+		  top_fsm_done = 1'b0;
         case (curr_state)  
             IDLE : begin
 					if (start)
@@ -155,6 +170,7 @@ module main_fsm (
 				SEND_RESULT: begin
 				    if (tx_ready && send_count_reg == 4'd0)
                     next_state = IDLE;
+						  top_fsm_done = 1'b1;
 				end
 
         endcase 
@@ -187,7 +203,6 @@ module main_fsm (
 				end 
             RECV_KEY: begin 
                 if (rx_valid) begin
-                    key_buffer[key_count] = rx_byte;
                     key_count = key_count - 4'b1;
 						  if (key_count_reg == 4'b0)
 								key_exp_start = 1'b1;
@@ -196,7 +211,6 @@ module main_fsm (
             end
             RECV_BLOCK: begin 
                  if (rx_valid) begin
-                    Data_buffer[Data_count] = rx_byte;
                     Data_count = Data_count - 4'b1;
 						  if (Data_count_reg == 4'b0)
 								aes_start = 1'b1;

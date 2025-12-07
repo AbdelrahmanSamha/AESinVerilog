@@ -5,7 +5,7 @@ module system_top (
 	 input  wire         dec,
 	 input  wire 			uart_rx,       // Incoming serial line
     output wire 			uart_tx,       // Outgoing serial line
-    output  reg        block_encryption_finish
+    output  wire        top_fsm_done
 );
 
 
@@ -81,7 +81,8 @@ module system_top (
         .tx_start(tx_start_out),
         .data_block(data_block),
         .aes_key(aes_key),
-		  .mem_key_rw_out(mem_key_rw)
+		  .mem_key_rw_out(mem_key_rw),
+		  .top_fsm_done_out(top_fsm_done)
     );
 	 
 	     uart_rx u_uart_rx (

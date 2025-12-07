@@ -22,7 +22,7 @@ module tb_system_top;
         .dec(dec),
         .uart_rx(uart_rx),
         .uart_tx(uart_tx),
-        .done(done)
+        .top_fsm_done(done)
     );
 
     // ---------------- UART PARAMETERS ----------------
