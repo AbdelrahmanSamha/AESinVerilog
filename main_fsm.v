@@ -131,11 +131,11 @@ module main_fsm (
 				tx_byte_reg <= tx_byte;	
 				
             if (rx_valid && curr_state == RECV_KEY) begin
-					key_buffer[key_count] = rx_byte;
+					key_buffer[key_count_reg] = rx_byte;
 				end
 				
 				if (rx_valid && curr_state == RECV_BLOCK) begin
-				   Data_buffer[Data_count] = rx_byte;
+				   Data_buffer[Data_count_reg] = rx_byte;
 				end
         end 
     end 
