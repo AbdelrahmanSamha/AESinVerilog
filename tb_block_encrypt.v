@@ -22,7 +22,8 @@ module tb_block_encrypt;
         .plaintext(plaintext),
         .cipherkey(cipherkey),
         .ciphertext(ciphertext),
-        .done(done)
+        .done(done),
+		  .dec(1'b0)
     );
 
     // expected ciphertext from FIPS-197 (canonical example)
