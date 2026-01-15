@@ -3,6 +3,11 @@
 module tb_aes_keyexpand;
 
     // ---------------------------------------------------------
+    // Parameter for DUT key size
+    // ---------------------------------------------------------
+    parameter KEY_SIZE = 256;   // Can be 128, 192, 256
+
+    // ---------------------------------------------------------
     // Clock generation
     // ---------------------------------------------------------
     reg clk = 0;
@@ -14,7 +19,7 @@ module tb_aes_keyexpand;
     reg rst_n = 0;
     reg init  = 0;
 
-    reg [127:0] og_key;
+    reg [KEY_SIZE-1:0] og_key;
 
     // ---------------------------------------------------------
     // DUT Outputs
@@ -22,24 +27,33 @@ module tb_aes_keyexpand;
     wire [127:0] round_key;
     wire store_key_mem;
     wire [3:0] address;
+	 wire finish; 
 
     // ---------------------------------------------------------
-    // Instantiate DUT
+    // Instantiate DUT with parameter override
     // ---------------------------------------------------------
-    aes_keyexpand dut (
+    aes_keyexpand #(
+        .KEY_SIZE(KEY_SIZE)
+    ) dut (
         .clk(clk),
         .rst_n(rst_n),
         .init(init),
         .og_key(og_key),
         .store_key_mem(store_key_mem),
         .address(address),
-        .round_key(round_key)
+        .round_key(round_key),
+		  .finish(finish)
     );
 
     // ---------------------------------------------------------
-    // Known AES-128 key from FIPS-197 example
+    // Known AES-128/192/256 key
     // ---------------------------------------------------------
-    localparam [127:0] TEST_KEY = 128'h2B7E151628AED2A6ABF7158809CF4F3C;
+    // Pick a key width that matches KEY_SIZE
+    localparam [KEY_SIZE-1:0] TEST_KEY =
+        (KEY_SIZE == 128) ? 128'h2B7E151628AED2A6ABF7158809CF4F3C :
+        (KEY_SIZE == 192) ? 192'h8E73B0F7DA0E6452C810F32B809079E562F8EAD2522C6B7B :
+        (KEY_SIZE == 256) ? 256'h603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4 :
+        {KEY_SIZE{1'b0}}; // default zeros if invalid
 
     initial begin
         // -----------------------------------------------------
@@ -64,10 +78,12 @@ module tb_aes_keyexpand;
         // -----------------------------------------------------
         // Observe key expansion
         // -----------------------------------------------------
-        $display("Starting AES Key Expansion Test...");
-        $display("Original key: %032h", TEST_KEY);
+        $display("Starting AES-%0d Key Expansion Test...", KEY_SIZE);
+        $display("Original key: %0h", TEST_KEY);
         $display("");
-		  #1000; 
-		  $finish;
+        wait(finish == 1'b1) 
+	#100
+	     $finish;
+		  
     end
 endmodule

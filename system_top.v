@@ -68,10 +68,6 @@ module system_top (
 	mem_round_keys keymem(.clock(clk), .address(key_address), .data(gen_roundkey), .wren(mem_round_key_en), .q(read_roundkey));
 	mux2to1 #(4) amux (.in0(write_key_address), .in1(read_key_address), .sel(mem_key_rw), .out(key_address[3:0]));
 	assign key_address[4] = 1'b0;
-	
-	
-	
-	
 
 
     // -----------------------
