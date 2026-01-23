@@ -38,7 +38,7 @@
 
 
 set_global_assignment -name FAMILY "MAX 10"
-set_global_assignment -name DEVICE 10M50DAF484C7G
+set_global_assignment -name DEVICE 10M50DAF672C7G
 set_global_assignment -name TOP_LEVEL_ENTITY aes_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 24.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "21:54:22  OCTOBER 31, 2025"
@@ -61,13 +61,6 @@ set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH tb_aes_block_ke
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_system_top_FSM -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_system_top_FSM
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_system_top_FSM -section_id tb_system_top_FSM
-set_location_assignment PIN_B8 -to rst_n
-set_location_assignment PIN_C10 -to init_accel
-set_location_assignment PIN_C11 -to dec
-set_location_assignment PIN_W10 -to uart_tx
-set_location_assignment PIN_V10 -to uart_rx
-set_location_assignment PIN_P11 -to clk
-set_location_assignment PIN_A8 -to top_fsm_done
 set_global_assignment -name VERILOG_FILE system_top.v
 set_global_assignment -name VERILOG_FILE main_fsm.v
 set_global_assignment -name VERILOG_FILE block_encrypt.v
@@ -108,4 +101,5 @@ set_global_assignment -name EDA_TEST_BENCH_NAME tb_aes_block_ke_mem -section_id 
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_aes_block_ke_mem
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_aes_block_ke_mem -section_id tb_aes_block_ke_mem
 set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_block_ke_mem.v -section_id tb_aes_block_ke_mem
+set_global_assignment -name VERILOG_FILE aes_ecb.v
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

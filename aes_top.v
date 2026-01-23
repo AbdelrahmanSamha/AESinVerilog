@@ -1,185 +1,109 @@
 module aes_top #(
-    parameter integer KEY_SIZE = 128
+    parameter integer KEY_SIZE  = 128,
+    parameter integer DOP       = 1,
+    parameter integer MODE      = 0
 )(
-    input               clk,
-    input               rst_n,
-    input               init,
-    input  [127:0]      plaintext,
-    input  [KEY_SIZE-1:0] key,
-	 input 					 dec, 
-    output [127:0]      ciphertext,
-    output              done
+    input                     clk,
+    input                     rst_n,
+
+    input                     init,
+    input                     dec,
+    input                     valid_din,
+    input  [KEY_SIZE-1:0]     og_key,
+    input  [DOP*128-1:0]      text_in,
+    input                     terminate_session,
+
+    output [DOP*128-1:0]      text_out,
+    output                    valid_dout
 );
 
+    localparam integer ECB_MODE = 0;
 
+    genvar i;
 
+    // ------------------------------------------------
+    // ECB-specific internal signals
+    // ------------------------------------------------
+    wire        cipher_start_all;
+    wire [127:0] roundkey_bus;
+    wire         done_m;
 
-	localparam  IDLE        = 3'b000,
-					KEYEXP_INIT = 3'b001,
-					KEYEXP_WAIT = 3'b010,
-					ENC_INIT    = 3'b011,
-					ENC_WAIT    = 3'b100,
-					DONE        = 3'b101;
-	
-	
+    // ------------------------------------------------
+    // ECB generation
+    // ------------------------------------------------
+    generate
+        if (MODE == ECB_MODE) begin : GEN_ECB
 
+            // -----------------------------
+            // MAIN ECB instance (index 0)
+            // -----------------------------
+            aes_ecb #(
+                .KEY_SIZE(KEY_SIZE),
+                .IS_MAIN (1)
+            ) ecb_main (
+                .clk                   (clk),
+                .rst_n                 (rst_n),
 
-	wire [127:0] CT;
-    // -----------------------------
-    // Internal wires
-    // -----------------------------
-    wire [127:0] gen_roundkey;
-    wire [127:0] read_roundkey;
-    wire [3:0]   write_key_address;
-    wire [3:0]   read_key_address;
-    wire [4:0]   key_address;
-    wire         mem_round_key_en;
-    wire         key_expand_finish;
-    wire         block_encryption_finish;
-	
-    reg  [2:0]   state, next_state;
+                .init_m                (init),
+                .dec_m                 (dec),
+                .og_key_m              (og_key),
+                .text_in_m             (text_in[127:0]),
+                .valid_in_m            (valid_din),
+                .terminate_session_m   (terminate_session),
 
-    reg          key_exp_start_out;
-    reg          aes_start_out;
-    reg          mem_key_rw;
-    reg          done_reg;
+                .text_out_m            (text_out[127:0]),
+                .done_m                (done_m),
+                .cipher_start_all      (cipher_start_all),
+                .roundkey_m_out        (roundkey_bus),
 
-    assign done = done_reg;
-    assign ciphertext = CT;
-    
+                // unused slave ports
+                .start_cipher          (1'b0),
+                .dec                   (1'b0),
+                .text_in               (128'b0),
+                .read_roundkey_in      (128'b0),
+                .text_out              ()
+            );
 
-    // -----------------------------
-    // Key Expansion
-    // -----------------------------
-    aes_keyexpand #(KEY_SIZE) keyexp (
-        .clk(clk),
-        .rst_n(rst_n),
-        .init(key_exp_start_out),
-        .og_key(key),
-        .store_key_mem(mem_round_key_en),
-        .address(write_key_address),
-        .round_key(gen_roundkey),
-        .finish(key_expand_finish)
-    );
+            // -----------------------------
+            // SLAVE ECB instances
+            // -----------------------------
+            if (DOP > 1) begin : GEN_ECB_SLAVES
+                for (i = 1; i < DOP; i = i + 1) begin : ECB_SLAVE
 
-    // -----------------------------
-    // Block Encrypt
-    // -----------------------------
-    
+                    aes_ecb #(
+                        .KEY_SIZE(KEY_SIZE),
+                        .IS_MAIN (0)
+                    ) ecb_slave (
+                        .clk              (clk),
+                        .rst_n            (rst_n),
 
-    block_encrypt #(KEY_SIZE) BE (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(aes_start_out),
-        .dec(dec),
-        .plaintext(plaintext),
-        .roundkey(read_roundkey),
-        .ciphertext(CT),
-        .key_address(read_key_address),
-        .done(block_encryption_finish)
-    );
+                        // unused main ports
+                        .init_m           (1'b0),
+                        .dec_m            (1'b0),
+                        .og_key_m         ({KEY_SIZE{1'b0}}),
+                        .text_in_m        (128'b0),
+                        .valid_in_m       (1'b0),
+                        .terminate_session_m (1'b0),
+								.text_out_m(),
+								.done_m(),
+								.cipher_start_all(),
+								.roundkey_m_out(),
 
-    // -----------------------------
-    // Round-key memory
-    // -----------------------------
-    mem_round_keys keymem (
-        .clock(clk),
-        .address(key_address),
-        .data(gen_roundkey),
-        .wren(mem_round_key_en),
-        .q(read_roundkey)
-    );
+                        // slave ports
+                        .start_cipher     (cipher_start_all),
+                        .dec              (dec),
+                        .text_in          (text_in[i*128 +: 128]),
+                        .read_roundkey_in (roundkey_bus),
 
-    mux2to1 #(4) addr_mux (
-        .in0(write_key_address),
-        .in1(read_key_address),
-        .sel(mem_key_rw),
-        .out(key_address[3:0])
-    );
-	assign key_address[4] = 1'b0;
-	
-	
-    // -----------------------------
-    // FSM: State register
-    // -----------------------------
-    always @(posedge clk) begin
-        if (!rst_n)
-            state <= IDLE;
-        else
-            state <= next_state;
-    end
+                        .text_out         (text_out[i*128 +: 128])
+                    );
 
-    // -----------------------------
-    // FSM: Next-state logic
-    // -----------------------------
-    always @(*) begin
-        next_state = state;
-
-        case (state)
-            IDLE:
-                if (init) next_state = KEYEXP_INIT;
-
-            KEYEXP_INIT:
-                next_state = KEYEXP_WAIT;
-
-            KEYEXP_WAIT:
-                if (key_expand_finish)
-                    next_state = ENC_INIT;
-
-            ENC_INIT:
-                next_state = ENC_WAIT;
-
-            ENC_WAIT:
-                if (block_encryption_finish)
-                    next_state = DONE;
-
-            DONE:
-                next_state = IDLE;
-
-            default:
-                next_state = IDLE;
-        endcase
-    end
-
-    // -----------------------------
-    // FSM: Output logic
-    // -----------------------------
-    always @(*) begin
-        key_exp_start_out = 1'b0;
-        aes_start_out     = 1'b0;
-        mem_key_rw        = 1'b0;
-        done_reg          = 1'b0;
-
-        case (state)
-            IDLE: begin
-                mem_key_rw = 1'b0;
+                end
             end
 
-            KEYEXP_INIT: begin
-                key_exp_start_out = 1'b1;
-                mem_key_rw = 1'b0;
-            end
+            assign valid_dout = done_m;
 
-            KEYEXP_WAIT: begin
-                mem_key_rw = 1'b0;
-            end
-
-            ENC_INIT: begin
-                aes_start_out = 1'b1;
-                mem_key_rw = 1'b1;
-            end
-
-            ENC_WAIT: begin
-                mem_key_rw = 1'b1;
-					 if (block_encryption_finish)begin 
-						done_reg = 1'b1;
-					 end 
-				end
-
-            DONE: begin
-                
-            end
-        endcase
-    end
+        end
+    endgenerate
 
 endmodule

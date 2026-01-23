@@ -105,7 +105,7 @@ module block_encrypt #(
 
         case (state)
             IDLE: begin
-                next_encstate = 128'd0;
+               
                 next_done     = 1'b0;
                 next_round_counter = dec ? LAST_KEY : 4'd0;
             end
