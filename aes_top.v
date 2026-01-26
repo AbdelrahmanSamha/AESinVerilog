@@ -1,7 +1,7 @@
 module aes_top #(
     parameter integer KEY_SIZE  = 128,
     parameter integer DOP       = 1,
-    parameter integer MODE      = 0
+    parameter integer MODE      = 1
 )(
     input                     clk,
     input                     rst_n,
