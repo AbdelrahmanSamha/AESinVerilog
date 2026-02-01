@@ -8,7 +8,7 @@ module block_encrypt #(
     input  [127:0]  plaintext,
     input  [127:0]  roundkey,
     output [127:0]  ciphertext,
-    output reg [3:0] key_address,
+    output [3:0] key_address,
     output reg      done
 );
 
@@ -31,11 +31,9 @@ module block_encrypt #(
     // FSM state encoding
     // -------------------------------------------------
     localparam IDLE       = 3'b000,
-               SETUP      = 3'b001,
-               INIT_ROUND = 3'b010,
-               GET_KEY    = 3'b011,
-               ITERATE    = 3'b100,
-               FINAL      = 3'b101;
+               SETUP    = 3'b001,
+               ITERATE    = 3'b010,
+               FINAL      = 3'b011;
 
     reg [2:0]   state, next_state;
     reg [3:0]   round_counter, next_round_counter;
@@ -43,6 +41,10 @@ module block_encrypt #(
     wire [127:0] round_encstate;
     reg          final_round_signal;
     reg          next_done;
+	 wire 		  last_round_signal;
+	 
+	 assign last_round_signal = ((!dec && round_counter == (Nr - 1))|| (dec && round_counter == 1)); 
+
 
     // -------------------------------------------------
     // 1. State register
@@ -60,6 +62,8 @@ module block_encrypt #(
             done <= next_done;
         end
     end
+	 
+	 
 
     // -------------------------------------------------
     // 2. Next-state logic
@@ -69,23 +73,15 @@ module block_encrypt #(
         case (state)
             IDLE:
                 if (start) next_state = SETUP;
-
+					 
             SETUP:
-                next_state = INIT_ROUND;
-
-            INIT_ROUND:
-                next_state = GET_KEY;
-
-            GET_KEY:
                 next_state = ITERATE;
 
             ITERATE: begin
-                if (!dec && round_counter < (Nr - 1))
-                    next_state = GET_KEY;
-                else if (dec && round_counter > 1)
-                    next_state = GET_KEY;
-                else
+                if (last_round_signal)
                     next_state = FINAL;
+					 else 
+						  next_state = ITERATE;
             end
 
             FINAL:
@@ -100,29 +96,20 @@ module block_encrypt #(
         next_round_counter = round_counter;
         next_encstate      = encstate;
         final_round_signal = 1'b0;
-        key_address        = 4'b0;
         next_done          = done;
 
         case (state)
             IDLE: begin
-               
                 next_done     = 1'b0;
-                next_round_counter = dec ? LAST_KEY : 4'd0;
+                next_round_counter = dec ? LAST_KEY : 4'd0;  // key = 0 / 10 
             end
 
             SETUP: begin
-                key_address = dec ? LAST_KEY : 4'd0;
-            end
-
-            INIT_ROUND: begin
                 next_encstate = plaintext ^ roundkey;
                 next_round_counter =
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
-            end
-
-            GET_KEY: begin
-                key_address = round_counter;
+								 
             end
 
             ITERATE: begin
@@ -130,11 +117,6 @@ module block_encrypt #(
                 next_round_counter =
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
-
-                if (!dec && round_counter == (Nr - 1))
-                    key_address = LAST_KEY;
-                else if (dec && round_counter == 4'd0)
-                    key_address = 4'd0;
             end
 
             FINAL: begin
@@ -145,6 +127,7 @@ module block_encrypt #(
         endcase
     end
 
+	assign key_address = next_round_counter;
     // -------------------------------------------------
     // AES round function (combinational)
     // -------------------------------------------------

@@ -103,13 +103,9 @@ module aes_top #(
 
             assign valid_dout = done_m;
 
-        end
-		  else if (MODE == CBC_MODE) begin : GEN_CBC 
+        end		  
 		  
-		  
-		  
-		  
-		  end 
+
 		  
 		  
     endgenerate

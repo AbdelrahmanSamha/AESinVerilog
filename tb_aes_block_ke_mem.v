@@ -5,10 +5,10 @@ module tb_aes_block_ke_mem;
     // ---------------------------------------------------------
     // Parameters
     // ---------------------------------------------------------
-    parameter integer KEY_SIZE = 256;  // 128, 192, 256
-    parameter integer DOP      = 4;    // 1 .. 4
+    parameter integer KEY_SIZE = 128;  // 128, 192, 256
+    parameter integer DOP      = 1;    // 1 .. 4
     parameter integer MODE     = 0;    // ECB
-    parameter integer DEC_MODE = 0;    // 0 = encrypt, 1 = decrypt
+    parameter integer DEC_MODE = 1;    // 0 = encrypt, 1 = decrypt
 
     // ---------------------------------------------------------
     // Clock generation
@@ -56,7 +56,8 @@ module tb_aes_block_ke_mem;
     // ---------------------------------------------------------
     // Plaintext blocks (NIST vectors)
     // ---------------------------------------------------------
-    localparam [127:0] PT0 = 128'h6BC1BEE22E409F96E93D7E117393172A;
+    //localparam [127:0] PT0 = 128'h6BC1BEE22E409F96E93D7E117393172A;
+    localparam [127:0] PT0 = 128'h3ad77bb40d7a3660a89ecaf32466ef97;
     localparam [127:0] PT1 = 128'hAE2D8A571E03AC9C9EB76FAC45AF8E51;
     localparam [127:0] PT2 = 128'h30C81C46A35CE411E5FBC1191A0A52EF;
     localparam [127:0] PT3 = 128'hF69F2445DF4F9B17AD2B417BE66C3710;
