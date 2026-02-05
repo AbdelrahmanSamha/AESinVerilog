@@ -39,10 +39,10 @@
 
 set_global_assignment -name FAMILY "MAX 10"
 set_global_assignment -name DEVICE 10M50DAF672C7G
-set_global_assignment -name TOP_LEVEL_ENTITY aes_top
+set_global_assignment -name TOP_LEVEL_ENTITY aes_uart_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 24.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "21:54:22  OCTOBER 31, 2025"
-set_global_assignment -name LAST_QUARTUS_VERSION "24.1std.0 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
@@ -57,7 +57,7 @@ set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name EDA_TEST_BENCH_ENABLE_STATUS TEST_BENCH_MODE -section_id eda_simulation
-set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH tb_aes_block_ke_mem -section_id eda_simulation
+set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH tb_aes_uart_top -section_id eda_simulation
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_system_top_FSM -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_system_top_FSM
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_system_top_FSM -section_id tb_system_top_FSM
@@ -92,14 +92,24 @@ set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_aes_keyex
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_aes_keyexpand -section_id tb_aes_keyexpand
 set_global_assignment -name VERILOG_FILE tb_aes_block_ke_mem.v
 set_global_assignment -name VERILOG_FILE aes_top.v
+set_global_assignment -name EDA_TEST_BENCH_NAME tb_aes_block_ke_mem -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_aes_block_ke_mem
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_aes_block_ke_mem -section_id tb_aes_block_ke_mem
+set_global_assignment -name VERILOG_FILE aes_ecb.v
+set_global_assignment -name VERILOG_FILE aes_buffer.v
+set_global_assignment -name VERILOG_FILE tb_aes_buffer.v
+set_global_assignment -name VERILOG_FILE control_fsm_rx.v
+set_global_assignment -name VERILOG_FILE control_fsm_tx.v
+set_global_assignment -name VERILOG_FILE aes_uart_top.v
+set_global_assignment -name VERILOG_FILE tb_aes_uart_top.v
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name EDA_TEST_BENCH_FILE tb_system_top_FSM.v -section_id tb_system_top_FSM
 set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_keyexpand.v -section_id tb_aes_keyexpand
-set_global_assignment -name EDA_TEST_BENCH_NAME tb_aes_block_ke_mem -section_id eda_simulation
-set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_aes_block_ke_mem
-set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_aes_block_ke_mem -section_id tb_aes_block_ke_mem
 set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_block_ke_mem.v -section_id tb_aes_block_ke_mem
-set_global_assignment -name VERILOG_FILE aes_ecb.v
+set_global_assignment -name EDA_TEST_BENCH_NAME tb_aes_uart_top -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_aes_uart_top
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_aes_uart_top -section_id tb_aes_uart_top
+set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_uart_top.v -section_id tb_aes_uart_top
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

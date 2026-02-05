@@ -10,7 +10,7 @@ module aes_ecb #(
 	
 	input [KEY_SIZE-1 : 0] og_key_m, 
 	input [127:0]	text_in_m,
-	input 			valid_in_m,
+	//input 			valid_in_m,
 	input terminate_session_m,
 	
 	output [127:0]  text_out_m,
@@ -26,8 +26,14 @@ module aes_ecb #(
 	input [127:0] text_in,
 	input [127:0] read_roundkey_in, 
 	
-	output [127:0] text_out
+	output [127:0] text_out,
+	
+	///
+	output reg key_expand_ready,    // stays high when round keys are ready - for rx fsm 
 
+	
+   input valid_in_key_aes,
+   input valid_in_block_aes
 
 );
 
@@ -123,6 +129,7 @@ module aes_ecb #(
 					state_m <= IDLE_m;
 					mem_key_rw <= 1'b0;
 					done_reg <= 1'b0;
+				   key_expand_ready <= 1'b0;
 				end
 				else begin 
 					state_m <= next_state_m;
@@ -133,6 +140,27 @@ module aes_ecb #(
 					else begin 
 						mem_key_rw <= mem_key_rw_next;
 					end 
+					
+					
+					// clear when starting NEW key expansion
+					if (key_exp_start) begin
+						key_expand_ready <= 1'b0;
+					end
+		
+					// set when key expansion finishes
+					if (key_expand_finish) begin
+						key_expand_ready <= 1'b1;
+					end
+		
+					if (terminate_session_m) begin
+						key_expand_ready <= 1'b0;
+					end
+		
+					if (next_state_m == IDLE_m) begin
+						key_expand_ready <= 1'b0;
+					end
+					
+					
 				end
 			end
 		
@@ -147,14 +175,15 @@ module aes_ecb #(
 						if (init_m) next_state_m = KEYEXP_INIT_m;
 		
 					KEYEXP_INIT_m:
-						if (valid_in_m) next_state_m = KEYEXP_WAIT_m;
+						if (valid_in_key_aes) next_state_m = KEYEXP_WAIT_m;
 		
 					KEYEXP_WAIT_m:
 						if (key_expand_finish)
 							next_state_m = CIPHER_HOLD_m;
 		
 					CIPHER_HOLD_m:
-						if(valid_in_m) next_state_m = CIPHER_WAIT_m;
+					
+						if(valid_in_block_aes) next_state_m = CIPHER_WAIT_m;
 						else if (terminate_session_m) next_state_m = IDLE_m; 
 		
 					CIPHER_WAIT_m:
@@ -183,7 +212,7 @@ module aes_ecb #(
 					end
 		
 					KEYEXP_INIT_m: begin
-						if (valid_in_m) begin 
+						if (valid_in_key_aes) begin 
 							key_exp_start = 1'b1;
 							mem_key_rw_next = 1'b1;
 						end 
@@ -195,7 +224,7 @@ module aes_ecb #(
 		
 					CIPHER_HOLD_m: begin
 						done_reg_next = 1'b0;
-						if (valid_in_m)begin 
+						if (valid_in_block_aes)begin 
 							cipher_start_all = 1'b1;
 							mem_key_rw_next = 1'b0;
 						end 
