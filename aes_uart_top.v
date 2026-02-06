@@ -7,13 +7,16 @@ module aes_uart_top #(
     input  wire        rst_n,
 
     // ================= UART RX =================
-    input  wire        rx_valid,
-    input  wire [7:0]  rx_byte,
+   // input  wire        rx_valid,
+//    input  wire [7:0]  rx_byte,
 
     // ================= UART TX =================
-    input  wire        tx_ready,
-    output wire        tx_valid,
-    output wire [7:0]  tx_byte
+    //input  wire        tx_ready,
+   // output wire        tx_valid,
+    //output wire [7:0]  tx_byte
+	 
+	 input  wire 			uart_rx,       // Incoming serial line
+    output wire 			uart_tx        // Outgoing serial line
 );
 
     // ============================================================
@@ -98,6 +101,15 @@ module aes_uart_top #(
 	 wire [3:0] round_mem_address;
 	 wire round_mem_we;
 	 wire round_mem_sel;
+
+
+    wire [7:0] rx_byte;
+    wire rx_valid;
+
+
+    wire tx_valid;   
+    wire [7:0] tx_byte;
+    wire tx_ready;         
 
     // ============================================================
     // RX FSM
@@ -294,17 +306,27 @@ module aes_uart_top #(
 			
 	assign round_mem_sel = round_mem_we;
 	
+    // ============================================================
+    // uart_rx
+    // ============================================================
+		     uart_rx u_uart_rx (
+        .clk(clk),
+        .reset(rst_n),
+        .uart_rx(uart_rx),
+        .rx_byte(rx_byte),
+        .rx_valid(rx_valid)
+    );
 	
-	/*
-	// select TX address whenever TX is busy sending (round dump / result)
-assign round_mem_sel = tx_busy;
-
-// 5-bit mux: in0=AES, in1=TX
-mux2to1 #(5) addr_mux (
-    .in0({1'b0, round_counter_out}),  // AES write/read address during encryption
-    .in1({1'b0, round_rd_addr}),       // TX read address during round dumping
-    .sel(round_mem_sel),
-    .out(round_mem_address)
-);
-*/
+    // ============================================================
+    // uart_tx
+    // ============================================================
+	    uart_tx u_uart_tx (
+        .clk(clk),
+        .reset(rst_n),
+        .tx_start(tx_valid),     
+        .tx_byte(tx_byte),       
+        .uart_tx(uart_tx),      
+        .tx_ready(tx_ready)          
+    );
+	
 endmodule
