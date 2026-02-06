@@ -9,7 +9,11 @@ module block_encrypt #(
     input  [127:0]  roundkey,
     output [127:0]  ciphertext,
     output [3:0] key_address,
-    output reg      done
+    output reg      done,
+	 
+	 output reg [127:0] next_encstate,
+	 output reg [3:0]   round_counter,
+    output reg         round_mem_we 
 );
 
     // -------------------------------------------------
@@ -36,8 +40,8 @@ module block_encrypt #(
                FINAL      = 3'b011;
 
     reg [2:0]   state, next_state;
-    reg [3:0]   round_counter, next_round_counter;
-    reg [127:0] encstate, next_encstate;
+    reg [3:0]   next_round_counter;
+    reg [127:0] encstate;
     wire [127:0] round_encstate;
     reg          final_round_signal;
     reg          next_done;
@@ -55,12 +59,17 @@ module block_encrypt #(
             done  <= 1'b0;
             encstate <= 128'b0;
             round_counter <= dec ? LAST_KEY : 4'd0;
+
+				
         end else begin
             state <= next_state;
             encstate <= next_encstate;
             round_counter <= next_round_counter;
             done <= next_done;
+				
+ 
         end
+   
     end
 	 
 	 
@@ -97,6 +106,8 @@ module block_encrypt #(
         next_encstate      = encstate;
         final_round_signal = 1'b0;
         next_done          = done;
+	 	  round_mem_we <= 1'b0; 
+
 
         case (state)
             IDLE: begin
@@ -109,7 +120,8 @@ module block_encrypt #(
                 next_round_counter =
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
-								 
+								  
+					 round_mem_we <= 1'b1; 		 
             end
 
             ITERATE: begin
@@ -117,12 +129,14 @@ module block_encrypt #(
                 next_round_counter =
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
+					 round_mem_we <= 1'b1; 	
             end
 
             FINAL: begin
                 final_round_signal = 1'b1;
                 next_encstate = round_encstate;
                 next_done = 1'b1;
+					 round_mem_we <= 1'b1; 	
             end
         endcase
     end

@@ -7,6 +7,13 @@ module aes_buffer #(
     // ================= BYTE INPUT =================
     input  wire [7:0]  byte_in,
 
+    // Header writes (1-cycle each)
+    input  wire        cmd_we,
+    input  wire        flags_we,
+    input  wire        length_we,
+    input  wire [31:0] length_in,
+
+    // Payload writes (byte-by-byte)
     input  wire        key_we,     // byte write enable
     input  wire        iv_we,      // byte write enable
     input  wire        block_we,   // byte write enable
@@ -16,15 +23,23 @@ module aes_buffer #(
     input  wire [127:0] aes_out_block,  // full 128-bit block
 
     // ================= STORED REGISTERS =================
+    output reg [7:0]          cmd_reg,
+    output reg [7:0]          flags_reg,
+    output reg [31:0]         length_reg,
+
     output reg [KEY_SIZE-1:0] key_reg,
     output reg [127:0]        iv_reg,
     output reg [127:0]        block_reg,
     output reg [127:0]        out_block,
 
     // ================= STATUS =================
-    output reg key_ready,
-    output reg iv_ready,
-    output reg block_ready
+    output reg cmd_ready,      // 1-cycle pulse
+    output reg flags_ready,    // 1-cycle pulse
+    output reg length_ready,   // 1-cycle pulse
+
+    output reg key_ready,      // sticky high until key starts writing again
+    output reg iv_ready,       // sticky high until iv starts writing again
+    output reg block_ready     // sticky high until block starts writing again
 );
 
     // ====================================================
@@ -44,6 +59,10 @@ module aes_buffer #(
     // ====================================================
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
+            cmd_reg     <= 8'd0;
+            flags_reg   <= 8'd0;
+            length_reg  <= 32'd0;
+
             key_reg     <= {KEY_SIZE{1'b0}};
             iv_reg      <= 128'd0;
             block_reg   <= 128'd0;
@@ -53,26 +72,56 @@ module aes_buffer #(
             iv_cnt      <= 0;
             block_cnt   <= 0;
 
+            cmd_ready   <= 1'b0;
+            flags_ready <= 1'b0;
+            length_ready<= 1'b0;
+
             key_ready   <= 1'b0;
             iv_ready    <= 1'b0;
             block_ready <= 1'b0;
 
         end else begin
-            // default: clear ready pulses
-        //    key_ready   <= 1'b0;
-         //   iv_ready    <= 1'b0;
-         //   block_ready <= 1'b0;
+            // ----------------------------
+            // default: 1-cycle pulses go low
+            // ----------------------------
+            cmd_ready    <= 1'b0;
+            flags_ready  <= 1'b0;
+            length_ready <= 1'b0;
+
+            // ----------------------------
+            // CMD (1 byte)
+            // ----------------------------
+            if (cmd_we) begin
+                cmd_reg   <= byte_in;
+                cmd_ready <= 1'b1;   // 1-cycle pulse
+            end
+
+            // ----------------------------
+            // FLAGS (1 byte)
+            // ----------------------------
+            if (flags_we) begin
+                flags_reg   <= byte_in;
+                flags_ready <= 1'b1; // 1-cycle pulse
+            end
+
+            // ----------------------------
+            // LENGTH (already assembled 32-bit)
+            // ----------------------------
+            if (length_we) begin
+                length_reg   <= length_in;
+                length_ready <= 1'b1; // 1-cycle pulse
+            end
 
             // ================= KEY (byte-by-byte) =================
             if (key_we) begin
-				
-				    if (key_cnt == 0)
-						key_ready <= 1'b0;
-                
-					 key_reg <= {key_reg[KEY_SIZE-9:0], byte_in};
+                // clear sticky ready when a NEW key starts arriving
+                if (key_cnt == 0)
+                    key_ready <= 1'b0;
+
+                key_reg <= {key_reg[KEY_SIZE-9:0], byte_in};
 
                 if (key_cnt == KEY_BYTES - 1) begin
-                    key_ready <= 1'b1;
+                    key_ready <= 1'b1;  // sticky
                     key_cnt   <= 0;
                 end else begin
                     key_cnt <= key_cnt + 1'b1;
@@ -81,15 +130,14 @@ module aes_buffer #(
 
             // ================= IV (128-bit, byte-by-byte) =================
             if (iv_we) begin
-				
-					if (iv_cnt == 0)
-						iv_ready <= 1'b0;
-						
-						
+                // clear sticky ready when a NEW iv starts arriving
+                if (iv_cnt == 0)
+                    iv_ready <= 1'b0;
+
                 iv_reg <= {iv_reg[119:0], byte_in};
 
                 if (iv_cnt == 4'd15) begin
-                    iv_ready <= 1'b1;
+                    iv_ready <= 1'b1;  // sticky
                     iv_cnt   <= 0;
                 end else begin
                     iv_cnt <= iv_cnt + 1'b1;
@@ -98,13 +146,14 @@ module aes_buffer #(
 
             // ================= DATA BLOCK (128-bit, byte-by-byte) =================
             if (block_we) begin
+                // clear sticky ready when a NEW block starts arriving
+                if (block_cnt == 0)
+                    block_ready <= 1'b0;
+
                 block_reg <= {block_reg[119:0], byte_in};
-					 
-					 if (block_cnt == 0)
-							block_ready <= 1'b0;
 
                 if (block_cnt == 4'd15) begin
-                    block_ready <= 1'b1;
+                    block_ready <= 1'b1; // sticky
                     block_cnt   <= 0;
                 end else begin
                     block_cnt <= block_cnt + 1'b1;

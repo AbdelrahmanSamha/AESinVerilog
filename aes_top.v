@@ -22,7 +22,12 @@ module aes_top #(
     output                    valid_dout,
 	
 	 
-    output                    key_expand_ready
+    output                    key_expand_ready,
+	 
+	 output [127:0] next_encstate_out,
+	 output  [3:0]   round_counter_out,
+	 output round_mem_we
+	 
 	 
 );
 
@@ -77,7 +82,11 @@ module aes_top #(
 					 .key_expand_ready(key_expand_ready),
 					 
 					 .valid_in_key_aes(valid_in_key_aes),
-					 .valid_in_block_aes(valid_in_block_aes)
+					 .valid_in_block_aes(valid_in_block_aes),
+					 
+					 .next_encstate_out(next_encstate_out),
+					 .round_counter_out(round_counter_out),
+					 .round_mem_we(round_mem_we)
             );
 
             // -----------------------------
@@ -115,10 +124,13 @@ module aes_top #(
 								
 								// 
 								
-								.key_expand_ready(key_expand_ready),
+								.key_expand_ready(),
 								
-								.valid_in_key_aes(valid_in_key_aes),
-								.valid_in_block_aes(valid_in_block_aes)
+								.valid_in_key_aes(),
+								.valid_in_block_aes(),
+								.next_encstate_out(),
+								.round_counter_out(),
+								.round_mem_we()
                     );
 
                 end

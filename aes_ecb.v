@@ -33,7 +33,12 @@ module aes_ecb #(
 
 	
    input valid_in_key_aes,
-   input valid_in_block_aes
+   input valid_in_block_aes,
+	
+	output [127:0] next_encstate_out,
+	output [3:0]   round_counter_out,
+	
+	output round_mem_we
 
 );
 
@@ -78,7 +83,11 @@ module aes_ecb #(
 				.roundkey(roundkey_m_out),
 				.ciphertext(text_out_m),
 				.key_address(read_key_address),
-				.done(block_encryption_finish_m)
+				.done(block_encryption_finish_m),
+				
+				.next_encstate(next_encstate_out),
+				.round_counter(round_counter_out),
+				.round_mem_we(round_mem_we)
 				);
 			// -----------------------------
 			// Key Expansion
@@ -130,6 +139,7 @@ module aes_ecb #(
 					mem_key_rw <= 1'b0;
 					done_reg <= 1'b0;
 				   key_expand_ready <= 1'b0;
+					
 				end
 				else begin 
 					state_m <= next_state_m;
@@ -159,7 +169,6 @@ module aes_ecb #(
 					if (next_state_m == IDLE_m) begin
 						key_expand_ready <= 1'b0;
 					end
-					
 					
 				end
 			end
