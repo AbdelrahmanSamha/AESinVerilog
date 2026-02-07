@@ -9,12 +9,13 @@ module uart_tx (
 
     parameter WINDOW = 9'd434;
 
-    parameter TX_IDLE  = 2'b00,
-              TX_START = 2'b01,
-              TX_DATA  = 2'b10,
-              TX_STOP  = 2'b11;
+    parameter TX_IDLE  = 3'b000,
+              TX_START = 3'b001,
+              TX_DATA  = 3'b010,
+              TX_STOP  = 3'b011,
+				  TX_CYCLE = 3'b100;
 
-    reg [1:0] tx_state, next_tx_state;
+    reg [2:0] tx_state, next_tx_state;
     reg [8:0] tx_count, tx_count_next;
     reg [3:0] tx_bits,  tx_bits_next;
 
@@ -75,7 +76,10 @@ module uart_tx (
 
             TX_STOP:
                 if (tx_count == 9'd0)
-                    next_tx_state = TX_IDLE;
+                    next_tx_state = TX_CYCLE;
+				
+				TX_CYCLE: 
+							next_tx_state = TX_IDLE; 
 
         endcase
     end
@@ -138,6 +142,9 @@ module uart_tx (
                 else
                     tx_count_next = tx_count - 9'd1;
             end
+				
+				TX_CYCLE: 
+					tx_ready_next = 1'b1;
 
         endcase
     end

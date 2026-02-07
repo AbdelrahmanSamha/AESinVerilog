@@ -282,7 +282,7 @@ module tx_fsm #(
     // ============================================================
     always @(*) begin
         // defaults
-        tx_valid  = 1'b1;
+        tx_valid  = 1'b0;
         tx_byte   = 8'h00;
 
         len_idx_n   = len_idx;
