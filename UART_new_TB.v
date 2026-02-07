@@ -58,37 +58,47 @@ module UART_new_TB;
         end
     endtask
 
-    // ---------------- SEND FULL FRAME TASK ----------------
-    task send_full_frame;
+    // ---------------- SEND FULL FRAME (2 BLOCKS) ----------------
+    task send_full_frame_2blocks;
         input [127:0] key;
-        input [127:0] block;
+        input [127:0] block1;
+        input [127:0] block2;
 
         integer i;
-        reg [7:0] key_bytes   [0:15];
-        reg [7:0] block_bytes [0:15];
+        reg [7:0] key_bytes    [0:15];
+        reg [7:0] b1_bytes     [0:15];
+        reg [7:0] b2_bytes     [0:15];
 
         begin
-            // Split key and block into bytes
+            // Split key and blocks into bytes (MSB first)
             for (i = 0; i < 16; i = i + 1) begin
-                key_bytes[i]   = key  [127 - i*8 -: 8];
-                block_bytes[i] = block[127 - i*8 -: 8];
+                key_bytes[i] = key   [127 - i*8 -: 8];
+                b1_bytes[i]  = block1[127 - i*8 -: 8];
+                b2_bytes[i]  = block2[127 - i*8 -: 8];
             end
 
             // ---------------- Header ----------------
-            uart_send_byte(8'h02);
-            uart_send_byte(8'h00);
-            uart_send_byte(8'h10);
+            uart_send_byte(8'h01);   // SOF
+            uart_send_byte(8'h00);   // CMD (same as your TB)
+            uart_send_byte(8'h20);   // LENGTH = 32 bytes (2 blocks)
 
-            // ---------------- Key ----------------
+            // ---------------- Key (16 bytes) ----------------
             for (i = 0; i < 16; i = i + 1)
                 uart_send_byte(key_bytes[i]);
 
-            // Small gap
+            // Small gap after key
             #(BIT_TIME * 5);
 
-            // ---------------- Block ----------------
+            // ---------------- Block 1 (16 bytes) ----------------
             for (i = 0; i < 16; i = i + 1)
-                uart_send_byte(block_bytes[i]);
+                uart_send_byte(b1_bytes[i]);
+
+            // Small gap between blocks (optional but helpful)
+            #(BIT_TIME * 5);
+
+            // ---------------- Block 2 (16 bytes) ----------------
+            for (i = 0; i < 16; i = i + 1)
+                uart_send_byte(b2_bytes[i]);
         end
     endtask
 
@@ -103,15 +113,16 @@ module UART_new_TB;
         rst_n = 1;
         #200;
 
-        $display("---- UART AES FRAME TEST ----");
+        $display("---- UART AES FRAME TEST (2 BLOCKS) ----");
 
-        send_full_frame(
+        send_full_frame_2blocks(
             128'h2B7E151628AED2A6ABF7158809CF4F3C, // key
-            128'h6BC1BEE22E409F96E93D7E117393172A  // block
+            128'h6BC1BEE22E409F96E93D7E117393172A, // block 1
+            128'hAE2D8A571E03AC9C9EB76FAC45AF8E51  // block 2 (example)
         );
 
         // Optionally capture returned bytes
-        repeat (160) begin
+        repeat (320) begin
             uart_receive_byte(rx_byte);
             $display("RX = %02x", rx_byte);
         end

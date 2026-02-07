@@ -5,7 +5,7 @@ module aes_uart_top #(
 )(
     input  wire        clk,
     input  wire        rst_n,
-
+/*
     // ================= UART RX =================
     input  wire        rx_valid,
     input  wire [7:0]  rx_byte,
@@ -14,9 +14,9 @@ module aes_uart_top #(
     input  wire        tx_ready,
     output wire        tx_valid,
     output wire [7:0]  tx_byte
-	 
-	// input  wire 			uart_rx,       // Incoming serial line
-    //output wire 			uart_tx        // Outgoing serial line
+	*/ 
+	 input  wire 			uart_rx,       // Incoming serial line
+    output wire 			uart_tx        // Outgoing serial line
 );
 
     // ============================================================
@@ -102,7 +102,7 @@ module aes_uart_top #(
 	 wire round_mem_we;
 	 wire round_mem_sel;
 
-/*
+
     wire [7:0] rx_byte;
     wire rx_valid;
 
@@ -110,7 +110,7 @@ module aes_uart_top #(
     wire tx_valid;   
     wire [7:0] tx_byte;
     wire tx_ready;         
-*/
+
     // ============================================================
     // RX FSM
     // ============================================================
@@ -304,7 +304,7 @@ module aes_uart_top #(
 			);
 			
 	assign round_mem_sel = round_mem_we;
-	/*
+
     // ============================================================
     // uart_rx
     // ============================================================
@@ -327,5 +327,5 @@ module aes_uart_top #(
         .uart_tx(uart_tx),      
         .tx_ready(tx_ready)          
     );
-	*/
+
 endmodule
