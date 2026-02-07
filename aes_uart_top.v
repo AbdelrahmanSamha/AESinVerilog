@@ -7,16 +7,16 @@ module aes_uart_top #(
     input  wire        rst_n,
 
     // ================= UART RX =================
-   // input  wire        rx_valid,
-//    input  wire [7:0]  rx_byte,
+    input  wire        rx_valid,
+    input  wire [7:0]  rx_byte,
 
     // ================= UART TX =================
-    //input  wire        tx_ready,
-   // output wire        tx_valid,
-    //output wire [7:0]  tx_byte
+    input  wire        tx_ready,
+    output wire        tx_valid,
+    output wire [7:0]  tx_byte
 	 
-	 input  wire 			uart_rx,       // Incoming serial line
-    output wire 			uart_tx        // Outgoing serial line
+	// input  wire 			uart_rx,       // Incoming serial line
+    //output wire 			uart_tx        // Outgoing serial line
 );
 
     // ============================================================
@@ -102,7 +102,7 @@ module aes_uart_top #(
 	 wire round_mem_we;
 	 wire round_mem_sel;
 
-
+/*
     wire [7:0] rx_byte;
     wire rx_valid;
 
@@ -110,7 +110,7 @@ module aes_uart_top #(
     wire tx_valid;   
     wire [7:0] tx_byte;
     wire tx_ready;         
-
+*/
     // ============================================================
     // RX FSM
     // ============================================================
@@ -273,8 +273,8 @@ module aes_uart_top #(
     // TX CONTROL FSM
     // ============================================================
       tx_fsm #(
-        .CMD_RESP_OR(8'h80)
-    ) u_tx_fsm (
+        .KEY_SIZE(KEY_SIZE)
+		  )u_tx_fsm (
         .clk        (clk),
         .rst_n      (rst_n),
 
@@ -286,14 +286,13 @@ module aes_uart_top #(
         .aes_result (aes_out),
 
         .cmd_in     (cmd_reg),
-        .flags_in   (flags_reg),
 	
 		  .round_rd_addr(round_rd_addr),
 		  .round_rd_data(round_mem_out),
 
-			.tx_busy(),
+			.tx_busy()
 
-        .error_flag (1'b0)
+     
     );
 	 
 	 
@@ -305,7 +304,7 @@ module aes_uart_top #(
 			);
 			
 	assign round_mem_sel = round_mem_we;
-	
+	/*
     // ============================================================
     // uart_rx
     // ============================================================
@@ -328,5 +327,5 @@ module aes_uart_top #(
         .uart_tx(uart_tx),      
         .tx_ready(tx_ready)          
     );
-	
+	*/
 endmodule

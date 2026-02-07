@@ -25,8 +25,10 @@ module tb_aes_uart_top;
     // ============================================================
     // DUT
     // ============================================================
+    localparam integer KEY_SIZE_TB = 192;
+
     aes_uart_top #(
-        .KEY_SIZE(128),
+        .KEY_SIZE(KEY_SIZE_TB),
         .DOP(1),
         .MODE(0) // ECB
     ) dut (
@@ -49,8 +51,13 @@ module tb_aes_uart_top;
     localparam [7:0] FLAGS_ENC_ECB_LEN1 = 8'b00_00_0_000;
     localparam [7:0] FLAGS_DEC_ECB_LEN1 = 8'b00_00_1_000;
 
-    // AES-128 rounds: Nr=10 -> 11 states
-    localparam integer AES128_ROUND_STATES = 11;
+    // rounds derived from KEY_SIZE_TB (matches tx_fsm logic)
+    localparam integer Nr_TB =
+        (KEY_SIZE_TB == 128) ? 10 :
+        (KEY_SIZE_TB == 192) ? 12 :
+        (KEY_SIZE_TB == 256) ? 14 : 0;
+
+    localparam integer ROUND_STATES_TB = Nr_TB + 1;
 
     // ============================================================
     // SEND ONE BYTE (decoded UART style)
@@ -68,6 +75,8 @@ module tb_aes_uart_top;
 
     // ============================================================
     // RECEIVE ONE BYTE (with timeout, NO HANG)
+    // Waits for tx_valid, samples tx_byte, then advances 1 clk.
+    // (tx_ready is held high in this TB)
     // ============================================================
     task recv_byte;
         output [7:0] b;
@@ -88,16 +97,12 @@ module tb_aes_uart_top;
     endtask
 
     // ============================================================
-    // RUN AES FRAME
+    // RUN AES FRAME (TX DATA-ONLY FORMAT)
     //
-    // NOTE (per your request):
-    // - TX header bytes (CMD/FLAGS/LEN) are NOT sent (tx_valid=0 there).
-    // - TB will print them as 0x00 with minimal change.
-    // - Then TB receives only payload bytes where tx_valid=1.
-    //
-    // Payload:
-    // - CMD_AES:       16 bytes ciphertext/plaintext
-    // - CMD_BLOCK_LAB: (11*16) bytes round states + 16 bytes final ciphertext
+    // New TX format:
+    // - NO CMD/FLAGS/LEN on TX at all
+    // - CMD_AES:       16 bytes result only
+    // - CMD_BLOCK_LAB: (ROUND_STATES_TB*16) bytes round states + 16 bytes final ciphertext
     // ============================================================
     task run_aes_frame;
         input [7:0]   cmd;
@@ -111,11 +116,9 @@ module tb_aes_uart_top;
 
         integer i;
         integer r, j;
-        reg [7:0]  b;
-        reg [31:0] rx_len;
+        reg [7:0]   b;
 
         reg [127:0] rx_block1;
-        reg [127:0] rx_block2;
         reg [127:0] round_state;
     begin
         // --------------------------------------------------------
@@ -133,7 +136,7 @@ module tb_aes_uart_top;
         $display("================================================");
 
         // --------------------------------------------------------
-        // SEND RX FRAME
+        // SEND RX FRAME (unchanged)
         // --------------------------------------------------------
         send_byte(cmd);
         send_byte(flags);
@@ -156,23 +159,13 @@ module tb_aes_uart_top;
                 send_byte(data_block2[127 - 8*i -: 8]);
 
         // --------------------------------------------------------
-        // RECEIVE TX HEADER (NOT SENT): print zeros (minimal change)
+        // RECEIVE TX PAYLOAD ONLY (NEW FORMAT)
         // --------------------------------------------------------
-        b = 8'h00;
-        $display("TX_CMD           = 0x%02x", b);
-        b = 8'h00;
-        $display("TX_FLAGS         = 0x%02x", b);
 
-        // In your protocol, TX LEN is logically 16 always
-        rx_len = 32'd16;
-        $display("TX_LEN           = %0d bytes", rx_len);
-
-        // --------------------------------------------------------
-        // If BLOCK_LAB, receive round dump first (11 * 16 bytes)
-        // --------------------------------------------------------
+        // If BLOCK_LAB, receive round dump first
         if (cmd == CMD_BLOCK_LAB) begin
-            $display("---- ROUND DUMP (AES-128: %0d states) ----", AES128_ROUND_STATES);
-            for (r = 0; r < AES128_ROUND_STATES; r = r + 1) begin
+            $display("---- ROUND DUMP (%0d states) ----", ROUND_STATES_TB);
+            for (r = 0; r < ROUND_STATES_TB; r = r + 1) begin
                 round_state = 128'd0;
                 for (j = 0; j < 16; j = j + 1) begin
                     recv_byte(b);
@@ -180,28 +173,16 @@ module tb_aes_uart_top;
                 end
                 $display("ROUND[%0d]        = %032x", r, round_state);
             end
-            $display("----------------------------------------");
+            $display("--------------------------------");
         end
 
-        // --------------------------------------------------------
         // Receive final 16-byte result
-        // --------------------------------------------------------
         rx_block1 = 128'd0;
         for (i = 0; i < 16; i = i + 1) begin
             recv_byte(b);
             rx_block1 = (rx_block1 << 8) | b;
         end
-        $display("TX_DATA BLOCK 1  = %032x", rx_block1);
-
-        // Optional second block if you ever enable it (kept for compatibility)
-        if (rx_len > 16) begin
-            rx_block2 = 128'd0;
-            for (i = 0; i < 16; i = i + 1) begin
-                recv_byte(b);
-                rx_block2 = (rx_block2 << 8) | b;
-            end
-            $display("TX_DATA BLOCK 2  = %032x", rx_block2);
-        end
+        $display("TX_RESULT BLOCK  = %032x", rx_block1);
 
         // --------------------------------------------------------
         // CHECK (checks final result)
@@ -228,7 +209,7 @@ module tb_aes_uart_top;
         #200;
         rst_n = 1;
         #200;
-
+/*
         // ================= ENCRYPT (BLOCK_LAB: prints rounds + final) =================
         run_aes_frame(
             CMD_BLOCK_LAB,
@@ -240,12 +221,24 @@ module tb_aes_uart_top;
             128'h0,
             128'h3ad77bb40d7a3660a89ecaf32466ef97
         );
-
-        // ================= DECRYPT (normal AES command: final only) =================
-        /*
+	*/	  
+        // ================= ENCRYPT (BLOCK_LAB: prints rounds + final) =================
         run_aes_frame(
             CMD_AES,
-            FLAGS_DEC_ECB_LEN1,
+            FLAGS_ENC_ECB_LEN1,
+            1,
+            32'd16,
+            192'h000102030405060708090a0b0c0d0e0f1011121314151617,
+            128'h00112233445566778899aabbccddeeff,
+            128'h0,
+            128'h6bc1bee22e409f96e93d7e117393172a
+        );
+
+        // ================= DECRYPT (normal AES command: final only) =================
+      /*  
+        run_aes_frame(
+            CMD_AES,
+            FLAGS_ENC_ECB_LEN1,
             1,
             32'd16,
             128'h000102030405060708090a0b0c0d0e0f,
@@ -253,8 +246,8 @@ module tb_aes_uart_top;
             128'h0,
             128'h00112233445566778899aabbccddeeff
         );
-        */
-
+        
+*/
         #200;
         $stop;
     end

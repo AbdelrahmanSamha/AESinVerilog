@@ -1,17 +1,10 @@
 // ============================================================
-// TX CONTROL FSM (Option A frame)
-//
-// TX frame:  CMD_RESP , FLAGS_ECHO , LENGTH(1..4 bytes) , DATA (N bytes)
-// - CMD_RESP = cmd_in | 8'h80
-// - FLAGS_ECHO = flags_in (optionally OR error flag into [7])
-// - LENGTH bytes count = flags_in[5:4] + 1
-// - LENGTH value = OUT_LEN_BYTES (number of DATA bytes we will transmit)
-// - DATA here is 128-bit (16 bytes) from aes_result
-//
-// BLOCK_LAB behavior:
-// - LENGTH stays 16 (ciphertext length only)
-// - After LEN: send (Nr+1) * 16 bytes (round states) from round_rd_data
-// - Then send final ciphertext 16 bytes
+// TX CONTROL FSM (DATA-ONLY)
+// - No CMD / FLAGS / LENGTH are transmitted anymore.
+// - On aes_done:
+//    * Normal: send 16 bytes ciphertext (aes_result) MSB-first
+//    * BLOCK_LAB (cmd_in==CMD_BLOCK_LAB): send (Nr+1)*16 bytes round states
+//      from round_rd_data (sync 1-cycle latency), then send ciphertext 16 bytes
 //
 // Handshake:
 // - tx_valid asserted only when we have a byte to send
@@ -24,7 +17,6 @@
 // ============================================================
 
 module tx_fsm #(
-    parameter [7:0]  CMD_RESP_OR   = 8'h80,
     parameter integer KEY_SIZE     = 128
 )(
     input  wire        clk,
@@ -38,10 +30,8 @@ module tx_fsm #(
     input  wire        aes_done,          // 1-cycle pulse when result ready
     input  wire [127:0] aes_result,       // 128-bit result
 
-    // from buffer (echo back)
+    // optional: keep cmd_in only for BLOCK_LAB behavior
     input  wire [7:0]  cmd_in,
-    input  wire [7:0]  flags_in,
-    input  wire        error_flag,
 
     // round memory read
     output reg  [3:0]  round_rd_addr,
@@ -54,7 +44,6 @@ module tx_fsm #(
     // ------------------------------------------------------------
     // constants
     // ------------------------------------------------------------
-    localparam [31:0] OUT_LEN_BYTES = 32'd16;
     localparam [7:0]  CMD_BLOCK_LAB = 8'h02;
 
     localparam integer Nr =
@@ -67,66 +56,26 @@ module tx_fsm #(
     // ------------------------------------------------------------
     // states
     // ------------------------------------------------------------
-    localparam [2:0]
-        S_IDLE   = 3'b000,
-        S_CMD    = 3'b001,
-        S_FLAGS  = 3'b010,
-        S_LEN    = 3'b011,
-        S_R_ADDR = 3'b100,  // drive addr only (no tx)
-        S_R_SEND = 3'b101,  // send 16 bytes from round_rd_data
-        S_DATA   = 3'b110;  // send 16 bytes of ciphertext
+    localparam [1:0]
+        S_IDLE   = 2'b00,
+        S_R_ADDR = 2'b01,  // drive addr only (no tx)
+        S_R_SEND = 2'b10,  // send 16 bytes from round_rd_data
+        S_DATA   = 2'b11;  // send 16 bytes of ciphertext
 
-    reg [2:0] state, next_state;
+    reg [1:0] state, next_state;
 
     // ------------------------------------------------------------
-    // latched frame fields
+    // latched data
     // ------------------------------------------------------------
-    reg [7:0]   cmd_lat;
-    reg [7:0]   flags_lat;
-    reg [31:0]  len_lat;
     reg [127:0] data_lat;
-
-    // length bytes count (1..4)
-    reg [2:0] len_bytes;
+    reg         lab_lat;        // 1 if BLOCK_LAB frame
 
     // counters
-    reg [2:0]  len_idx,  len_idx_n;
-    reg [4:0]  data_idx, data_idx_n;
-
-    // rounds controls
-    reg        lab_lat;
-    reg [3:0]  round_idx, round_idx_n;   // 0..Nr
-    reg [4:0]  rbyte_idx, rbyte_idx_n;   // 0..15
+    reg [4:0]  data_idx, data_idx_n;      // 0..15
+    reg [3:0]  round_idx, round_idx_n;    // 0..Nr
+    reg [4:0]  rbyte_idx, rbyte_idx_n;    // 0..15
 
     wire last_round = (round_idx == (NUM_ROUNDS_DUMP - 1));
-
-    // ------------------------------------------------------------
-    // LENGTH byte select (big-endian)
-    // ------------------------------------------------------------
-    reg [7:0] len_byte_sel;
-    always @(*) begin
-        len_byte_sel = 8'h00;
-        case (len_bytes)
-            3'd1: begin
-                len_byte_sel = len_lat[7:0];
-            end
-            3'd2: begin
-                if (len_idx == 3'd0) len_byte_sel = len_lat[15:8];
-                else                 len_byte_sel = len_lat[7:0];
-            end
-            3'd3: begin
-                if (len_idx == 3'd0)      len_byte_sel = len_lat[23:16];
-                else if (len_idx == 3'd1) len_byte_sel = len_lat[15:8];
-                else                       len_byte_sel = len_lat[7:0];
-            end
-            default: begin
-                if (len_idx == 3'd0)      len_byte_sel = len_lat[31:24];
-                else if (len_idx == 3'd1) len_byte_sel = len_lat[23:16];
-                else if (len_idx == 3'd2) len_byte_sel = len_lat[15:8];
-                else                       len_byte_sel = len_lat[7:0];
-            end
-        endcase
-    end
 
     // ------------------------------------------------------------
     // helper: select byte MSB-first
@@ -185,40 +134,24 @@ module tx_fsm #(
         if (!rst_n) begin
             state     <= S_IDLE;
 
-            cmd_lat   <= 8'd0;
-            flags_lat <= 8'd0;
-            len_lat   <= 32'd0;
             data_lat  <= 128'd0;
-
-            len_bytes <= 3'd1;
-
-            len_idx   <= 3'd0;
-            data_idx  <= 5'd0;
-
             lab_lat   <= 1'b0;
+
+            data_idx  <= 5'd0;
             round_idx <= 4'd0;
             rbyte_idx <= 5'd0;
 
         end else begin
-            state    <= next_state;
+            state <= next_state;
 
-            len_idx  <= len_idx_n;
-            data_idx <= data_idx_n;
-
+            data_idx  <= data_idx_n;
             round_idx <= round_idx_n;
             rbyte_idx <= rbyte_idx_n;
 
             if (aes_done) begin
-                cmd_lat   <= (cmd_in | CMD_RESP_OR);
-                flags_lat <= (error_flag) ? (flags_in | 8'b1000_0000) : flags_in;
-                len_lat   <= OUT_LEN_BYTES;
                 data_lat  <= aes_result;
-
-                len_bytes <= ({1'b0, flags_in[5:4]} + 3'd1);
-
                 lab_lat   <= (cmd_in == CMD_BLOCK_LAB);
 
-                len_idx   <= 3'd0;
                 data_idx  <= 5'd0;
                 round_idx <= 4'd0;
                 rbyte_idx <= 5'd0;
@@ -233,20 +166,11 @@ module tx_fsm #(
         next_state = state;
 
         case (state)
-            S_IDLE:   if (aes_done) next_state = S_CMD;
-
-            S_CMD:    if (tx_ready) next_state = S_FLAGS;
-
-            S_FLAGS:  if (tx_ready) next_state = S_LEN;
-
-            S_LEN: begin
-                if (tx_ready) begin
-                    if (len_idx == (len_bytes - 3'd1)) begin
-                        if (lab_lat) next_state = S_R_ADDR;
-                        else         next_state = S_DATA;
-                    end else begin
-                        next_state = S_LEN;
-                    end
+            S_IDLE: begin
+                if (aes_done) begin
+                    // decide immediately using cmd_in (same cycle as aes_done pulse)
+                    if (cmd_in == CMD_BLOCK_LAB) next_state = S_R_ADDR;
+                    else                         next_state = S_DATA;
                 end
             end
 
@@ -282,12 +206,10 @@ module tx_fsm #(
     // ============================================================
     always @(*) begin
         // defaults
-        tx_valid  = 1'b0;
-        tx_byte   = 8'h00;
+        tx_valid = 1'b0;
+        tx_byte  = 8'h00;
 
-        len_idx_n   = len_idx;
         data_idx_n  = data_idx;
-
         round_idx_n = round_idx;
         rbyte_idx_n = rbyte_idx;
 
@@ -297,30 +219,8 @@ module tx_fsm #(
         round_rd_addr = round_idx;
 
         case (state)
-            S_CMD: begin
-                tx_valid = 1'b0;
-                tx_byte  = cmd_lat;
-            end
-
-            S_FLAGS: begin
-                tx_valid = 1'b0;
-                tx_byte  = flags_lat;
-            end
-
-            S_LEN: begin
-                tx_valid = 1'b0;
-                tx_byte  = len_byte_sel;
-
-                if (tx_ready) begin
-                    if (len_idx != (len_bytes - 3'd1))
-                        len_idx_n = len_idx + 3'd1;
-                    else
-                        len_idx_n = 3'd0;
-                end
-            end
-
             S_R_ADDR: begin
-                // no tx here, just address setup
+                // no tx, just address setup
             end
 
             S_R_SEND: begin
