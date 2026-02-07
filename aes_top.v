@@ -33,8 +33,9 @@ module aes_top #(
     // ECB generation
     // ------------------------------------------------
     generate
+	 
         if (MODE == ECB_MODE) begin : GEN_ECB
-
+/*
             // -----------------------------
             // MAIN ECB instance (index 0)
             // -----------------------------
@@ -103,7 +104,7 @@ module aes_top #(
             end
 
             assign valid_dout = done_m;
-
+*/
         end
 		  
 		  else if (MODE == CTR_MODE) begin : GEN_CTR
@@ -119,7 +120,7 @@ module aes_top #(
                 .rst_n                 (rst_n),
 
                 .init_m                (init),
-                .dec_m                 (dec),
+                .dec_m                 (1'b0),
                 .og_key_m              (og_key),
 					 
 					 .counter_m             (128'hf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff),
@@ -165,7 +166,7 @@ module aes_top #(
                         .valid_in_m       (1'b0),
                         .terminate_session_m (1'b0),
 								
-								.counter_m  (1'b0),
+								.counter_m  (128'b0),
 								
 								.text_out_m(),
 								.done_m(),
