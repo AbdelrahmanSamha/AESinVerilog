@@ -127,7 +127,7 @@ module aes_uart_top #(
         // buffer write strobes
         .buf_cmd_we    (buf_cmd_we),
         .buf_flags_we  (buf_flags_we),
-        .buf_len_we    (buf_len_we),
+        .buf_len_we_out    (buf_len_we),
 
         .buf_key_we    (buf_key_we),
         .buf_iv_we     (buf_iv_we),

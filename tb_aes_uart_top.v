@@ -25,7 +25,7 @@ module tb_aes_uart_top;
     // ============================================================
     // DUT
     // ============================================================
-    localparam integer KEY_SIZE_TB = 192;
+    localparam integer KEY_SIZE_TB = 128;
 
     aes_uart_top #(
         .KEY_SIZE(KEY_SIZE_TB),
@@ -75,8 +75,6 @@ module tb_aes_uart_top;
 
     // ============================================================
     // RECEIVE ONE BYTE (with timeout, NO HANG)
-    // Waits for tx_valid, samples tx_byte, then advances 1 clk.
-    // (tx_ready is held high in this TB)
     // ============================================================
     task recv_byte;
         output [7:0] b;
@@ -98,11 +96,6 @@ module tb_aes_uart_top;
 
     // ============================================================
     // RUN AES FRAME (TX DATA-ONLY FORMAT)
-    //
-    // New TX format:
-    // - NO CMD/FLAGS/LEN on TX at all
-    // - CMD_AES:       16 bytes result only
-    // - CMD_BLOCK_LAB: (ROUND_STATES_TB*16) bytes round states + 16 bytes final ciphertext
     // ============================================================
     task run_aes_frame;
         input [7:0]   cmd;
@@ -153,6 +146,15 @@ module tb_aes_uart_top;
         for (i = 0; i < 16; i = i + 1)
             send_byte(data_block1[127 - 8*i -: 8]);
 
+        // --------------------------------------------------------
+        // >>> ADD SMALL GAP BETWEEN BLOCK1 AND BLOCK2 <<<
+        // --------------------------------------------------------
+        if (len_value > 16) begin
+            rx_valid = 1'b0;
+            rx_byte  = 8'h00;
+            repeat (100) @(posedge clk);   // << change 10 to desired gap cycles
+        end
+
         // DATA BLOCK 2 (if any)
         if (len_value > 16)
             for (i = 0; i < 16; i = i + 1)
@@ -161,8 +163,6 @@ module tb_aes_uart_top;
         // --------------------------------------------------------
         // RECEIVE TX PAYLOAD ONLY (NEW FORMAT)
         // --------------------------------------------------------
-
-        // If BLOCK_LAB, receive round dump first
         if (cmd == CMD_BLOCK_LAB) begin
             $display("---- ROUND DUMP (%0d states) ----", ROUND_STATES_TB);
             for (r = 0; r < ROUND_STATES_TB; r = r + 1) begin
@@ -209,45 +209,18 @@ module tb_aes_uart_top;
         #200;
         rst_n = 1;
         #200;
-/*
-        // ================= ENCRYPT (BLOCK_LAB: prints rounds + final) =================
+
         run_aes_frame(
-            CMD_BLOCK_LAB,
+            CMD_AES,
             FLAGS_ENC_ECB_LEN1,
             1,
-            32'd16,
+            32'd32,
             128'h2b7e151628aed2a6abf7158809cf4f3c,
             128'h6bc1bee22e409f96e93d7e117393172a,
-            128'h0,
-            128'h3ad77bb40d7a3660a89ecaf32466ef97
-        );
-	*/	  
-        // ================= ENCRYPT (BLOCK_LAB: prints rounds + final) =================
-        run_aes_frame(
-            CMD_AES,
-            FLAGS_ENC_ECB_LEN1,
-            1,
-            32'd16,
-            192'h000102030405060708090a0b0c0d0e0f1011121314151617,
             128'h00112233445566778899aabbccddeeff,
-            128'h0,
-            128'h6bc1bee22e409f96e93d7e117393172a
-        );
-
-        // ================= DECRYPT (normal AES command: final only) =================
-      /*  
-        run_aes_frame(
-            CMD_AES,
-            FLAGS_ENC_ECB_LEN1,
-            1,
-            32'd16,
-            128'h000102030405060708090a0b0c0d0e0f,
-            128'h69c4e0d86a7b0430d8cdb78070b4c55a,
-            128'h0,
             128'h00112233445566778899aabbccddeeff
         );
-        
-*/
+
         #200;
         $stop;
     end

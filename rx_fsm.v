@@ -11,7 +11,7 @@ module rx_fsm #(
     // ---- to BUFFER ----
     output reg         buf_cmd_we,
     output reg         buf_flags_we,
-    output reg         buf_len_we,
+    output reg         buf_len_we_out,
 
     output reg         buf_key_we,
     output reg         buf_iv_we,
@@ -61,6 +61,7 @@ module rx_fsm #(
     reg [7:0]  key_cnt,  key_cnt_n; // counts remaining bytes
     reg [4:0]  iv_cnt,   iv_cnt_n;  // counts remaining bytes
     reg [31:0] data_cnt, data_cnt_n;// counts remaining bytes
+    reg buf_len_we ;
 
     // ============================================================
     // 1) State register + sequential regs
@@ -82,6 +83,8 @@ module rx_fsm #(
             data_cnt      <= 32'd0;
 
             buf_data_addr <= 32'd0;
+				
+            buf_len_we_out <= 1'd0;
         end else begin
             curr_state <= next_state;
 
@@ -91,6 +94,8 @@ module rx_fsm #(
             key_cnt    <= key_cnt_n;
             iv_cnt     <= iv_cnt_n;
             data_cnt   <= data_cnt_n;
+				
+				buf_len_we_out <= buf_len_we;
 
             // CMD captured in IDLE on first rx_valid
             if (buf_cmd_we) begin
