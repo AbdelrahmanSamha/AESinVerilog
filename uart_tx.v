@@ -1,4 +1,7 @@
-module uart_tx (
+module uart_tx #(
+    parameter CLK_FREQ = 50_000_000,
+    parameter BAUD     = 921600
+)(
     input  wire clk,
     input  wire reset,       // ACTIVE-low ASYNC RESET
     input  wire tx_start,    // user asserts for one cycle to send
@@ -7,7 +10,7 @@ module uart_tx (
     output wire tx_ready
 );
 
-    parameter WINDOW = 9'd434;
+    localparam WINDOW = CLK_FREQ / BAUD;
 
     parameter TX_IDLE  = 3'b000,
               TX_START = 3'b001,
