@@ -1,6 +1,6 @@
 module uart_tx #(
     parameter CLK_FREQ = 50_000_000,
-    parameter BAUD     = 921600
+    parameter BAUD     = 115200
 )(
     input  wire clk,
     input  wire reset,       // ACTIVE-low ASYNC RESET
@@ -12,7 +12,7 @@ module uart_tx #(
 
     localparam WINDOW = CLK_FREQ / BAUD;
 
-    parameter TX_IDLE  = 3'b000,
+    localparam TX_IDLE  = 3'b000,
               TX_START = 3'b001,
               TX_DATA  = 3'b010,
               TX_STOP  = 3'b011,

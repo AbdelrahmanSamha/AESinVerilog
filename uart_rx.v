@@ -1,6 +1,6 @@
 module uart_rx #(
     parameter CLK_FREQ = 50_000_000,
-    parameter BAUD     = 921600
+    parameter BAUD     = 115200
 )(
     input  wire clk,
     input  wire reset,     // ACTIVE-low ASYNC RESET
@@ -9,7 +9,7 @@ module uart_rx #(
     output wire        rx_valid
 );
 
-    parameter RX_IDLE  = 2'b00, 
+    localparam RX_IDLE  = 2'b00, 
               RX_START = 2'b01, 
               RX_DATA  = 2'b10, 
               RX_STOP  = 2'b11; 
