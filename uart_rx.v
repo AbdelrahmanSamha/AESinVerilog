@@ -1,4 +1,7 @@
-module uart_rx (
+module uart_rx #(
+    parameter CLK_FREQ = 50_000_000,
+    parameter BAUD     = 921600
+)(
     input  wire clk,
     input  wire reset,     // ACTIVE-low ASYNC RESET
     input  wire uart_rx,
@@ -11,7 +14,7 @@ module uart_rx (
               RX_DATA  = 2'b10, 
               RX_STOP  = 2'b11; 
 
-    parameter WINDOW = 9'd434; // 50,000,000Hz/115,200
+    localparam WINDOW = CLK_FREQ / BAUD;
 
     reg [1:0] rx_state, next_rx_state; 
     reg [8:0] rx_count, rx_count_next; 
