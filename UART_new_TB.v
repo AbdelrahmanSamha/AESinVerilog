@@ -21,7 +21,7 @@ module UART_new_TB;
 
     // ---------------- UART PARAMETERS ----------------
     parameter CLK_FREQ = 50_000_000;
-    parameter BAUD     = 115200;
+    parameter BAUD     = 921600;
     parameter BIT_TIME = 1_000_000_000 / BAUD; // ns
 
     // ---------------- UART RX capture ----------------
