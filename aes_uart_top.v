@@ -242,6 +242,7 @@ module aes_uart_top #(
 
         .og_key     (key_reg),
         .text_in    (block_reg),
+        .iv    (iv_reg),
 
         .terminate_session (1'b0),
 
