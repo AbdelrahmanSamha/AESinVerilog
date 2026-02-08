@@ -28,7 +28,7 @@ module core_fsm #(
     output reg         valid_in_key_aes,   // 1-cycle pulse
     output reg         valid_in_block_aes,  // 1-cycle pulse (blk_sent protected)
 	 
-	 output reg			  aes_rst // rst after finish frame and operation 
+	 output reg			  finish_cmd_rst // rst after finish frame and operation 
 	 
 	 
 	 
@@ -166,7 +166,7 @@ module core_fsm #(
         aes_start          = 1'b0;
         valid_in_key_aes   = 1'b0;
         valid_in_block_aes = 1'b0;
-        aes_rst      = 1'b1;  
+        finish_cmd_rst      = 1'b1;  
 
 
         // hold regs by default
@@ -251,7 +251,7 @@ module core_fsm #(
 
             S_DONE: begin
                 // nothing; will go back to WAIT_HDR and wait next header
-						aes_rst = 1'b0;
+						finish_cmd_rst = 1'b0;
 
             end
         endcase

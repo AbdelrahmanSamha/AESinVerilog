@@ -85,7 +85,7 @@ module aes_uart_top #(
     wire                aes_done;
     wire                key_expand_ready;
 	 
-	 wire aes_rst;
+	 wire finish_cmd_rst;
 
     assign aes_out = aes_out_bus[127:0];
 
@@ -152,7 +152,7 @@ module aes_uart_top #(
         .KEY_SIZE(KEY_SIZE)
     ) u_buf (
         .clk        (clk),
-        .rst_n      (rst_n),
+        .rst_n      (rst_n && finish_cmd_rst),
 
         .byte_in    (buf_wbyte),
 
@@ -219,7 +219,7 @@ module aes_uart_top #(
         .dec              (dec),
         .valid_in_key_aes (valid_in_key_aes),
         .valid_in_block_aes(valid_in_block_aes),
-		  .aes_rst(aes_rst)
+		  .finish_cmd_rst(finish_cmd_rst)
 
     );
 
@@ -232,7 +232,7 @@ module aes_uart_top #(
         .MODE    (MODE)
     ) u_aes (
         .clk        (clk),
-        .rst_n      (rst_n && aes_rst),
+        .rst_n      (rst_n && finish_cmd_rst),
 
         .init       (aes_start),
         .dec        (dec),
