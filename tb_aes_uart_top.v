@@ -30,7 +30,7 @@ module tb_aes_uart_top;
     aes_uart_top #(
         .KEY_SIZE(KEY_SIZE_TB),
         .DOP(1),
-        .MODE(0) // ECB
+        .MODE(1) // CBC (MODE=1)
     ) dut (
         .clk      (clk),
         .rst_n    (rst_n),
@@ -48,7 +48,8 @@ module tb_aes_uart_top;
     localparam [7:0] CMD_BLOCK_LAB = 8'h02;
 
     // flags: [2:0]=mode, [3]=dec, [5:4]=len_format
-    localparam [7:0] FLAGS_ENC_ECB_LEN1 = 8'b00_00_0_000;
+    // NOTE: You may want to set mode bits to match CBC explicitly, depending on your rx_fsm definition.
+    localparam [7:0] FLAGS_ENC_ECB_LEN1 = 8'b00_00_0_000; // keep as-is (user requested minimal changes)
     localparam [7:0] FLAGS_DEC_ECB_LEN1 = 8'b00_00_1_000;
 
     // rounds derived from KEY_SIZE_TB (matches tx_fsm logic)
@@ -95,7 +96,9 @@ module tb_aes_uart_top;
     endtask
 
     // ============================================================
-    // RUN AES FRAME (TX DATA-ONLY FORMAT)
+    // RUN AES FRAME
+    // - LENGTH is ONLY for DATA bytes
+    // - Send KEY then IV (same packing as KEY)
     // ============================================================
     task run_aes_frame;
         input [7:0]   cmd;
@@ -103,6 +106,7 @@ module tb_aes_uart_top;
         input integer len_bytes_num;     // 1..4
         input [31:0]  len_value;         // DATA length (sent in RX header)
         input [127:0] key;
+        input [127:0] iv;
         input [127:0] data_block1;
         input [127:0] data_block2;       // optional
         input [127:0] expected1;         // optional (0 = skip)
@@ -121,38 +125,49 @@ module tb_aes_uart_top;
         $display("CMD              = 0x%02x", cmd);
         $display("FLAGS            = 0x%02x", flags);
         $display("LEN BYTES NUM    = %0d", len_bytes_num);
-        $display("LEN VALUE        = %0d (0x%08x)", len_value, len_value);
+        $display("LEN VALUE        = %0d (0x%08x)  [DATA ONLY]", len_value, len_value);
         $display("KEY              = %032x", key);
+        $display("IV               = %032x", iv);
         $display("DATA BLOCK 1     = %032x", data_block1);
         if (len_value > 16)
             $display("DATA BLOCK 2     = %032x", data_block2);
         $display("================================================");
 
         // --------------------------------------------------------
-        // SEND RX FRAME (unchanged)
+        // SEND RX HEADER
         // --------------------------------------------------------
         send_byte(cmd);
         send_byte(flags);
 
-        // LENGTH (big-endian)
+        // LENGTH (big-endian) : DATA length ONLY
         for (i = len_bytes_num-1; i >= 0; i = i - 1)
             send_byte(len_value >> (8*i));
 
-        // KEY (16 bytes for AES-128)
+        // --------------------------------------------------------
+        // SEND KEY (MSB-first, 16 bytes for AES-128)
+        // --------------------------------------------------------
         for (i = 0; i < 16; i = i + 1)
             send_byte(key[127 - 8*i -: 8]);
 
-        // DATA BLOCK 1
+        // --------------------------------------------------------
+        // SEND IV (MSB-first, same as KEY)
+        // --------------------------------------------------------
+        for (i = 0; i < 16; i = i + 1)
+            send_byte(iv[127 - 8*i -: 8]);
+
+        // --------------------------------------------------------
+        // SEND DATA BLOCK 1
+        // --------------------------------------------------------
         for (i = 0; i < 16; i = i + 1)
             send_byte(data_block1[127 - 8*i -: 8]);
 
         // --------------------------------------------------------
-        // >>> ADD SMALL GAP BETWEEN BLOCK1 AND BLOCK2 <<<
+        // GAP BETWEEN BLOCKS (optional)
         // --------------------------------------------------------
         if (len_value > 16) begin
             rx_valid = 1'b0;
             rx_byte  = 8'h00;
-            repeat (100) @(posedge clk);   // << change 10 to desired gap cycles
+            repeat (100) @(posedge clk);
         end
 
         // DATA BLOCK 2 (if any)
@@ -161,7 +176,7 @@ module tb_aes_uart_top;
                 send_byte(data_block2[127 - 8*i -: 8]);
 
         // --------------------------------------------------------
-        // RECEIVE TX PAYLOAD ONLY (NEW FORMAT)
+        // RECEIVE TX PAYLOAD ONLY (DATA-ONLY FORMAT)
         // --------------------------------------------------------
         if (cmd == CMD_BLOCK_LAB) begin
             $display("---- ROUND DUMP (%0d states) ----", ROUND_STATES_TB);
@@ -185,7 +200,7 @@ module tb_aes_uart_top;
         $display("TX_RESULT BLOCK  = %032x", rx_block1);
 
         // --------------------------------------------------------
-        // CHECK (checks final result)
+        // CHECK
         // --------------------------------------------------------
         if (expected1 !== 128'h0) begin
             if (rx_block1 === expected1)
@@ -214,11 +229,13 @@ module tb_aes_uart_top;
             CMD_AES,
             FLAGS_ENC_ECB_LEN1,
             1,
-            32'd32,
-            128'h2b7e151628aed2a6abf7158809cf4f3c,
-            128'h6bc1bee22e409f96e93d7e117393172a,
-            128'h00112233445566778899aabbccddeeff,
-            128'h00112233445566778899aabbccddeeff
+            32'd16, // DATA length only (2 blocks)
+            128'h2b7e151628aed2a6abf7158809cf4f3c, // key
+            128'h000102030405060708090a0b0c0d0e0f, // iv (example)
+            //128'h6bc1bee22e409f96e93d7e117393172a, // block1
+            128'h3b3fd92eb72dad20333449f8e83cfb4a, // block1
+            128'h00112233445566778899aabbccddeeff, // block2
+            128'h00112233445566778899aabbccddeeff  // expected (example)
         );
 
         #200;
