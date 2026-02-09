@@ -57,6 +57,10 @@ module aes_ctr #(
 		
 	reg done_reg, done_reg_next;
 	reg key_exp_start ;
+	
+   reg  [127:0] ctr_in;
+   reg  [31:0] i;
+
 		
 	wire key_expand_finish, block_encryption_finish_m;
 	wire [3:0] read_key_address, write_key_address;
@@ -80,7 +84,7 @@ module aes_ctr #(
 				.rst_n(rst_n),
 				.start(cipher_start_all),
 				.dec(1'b0),
-				.plaintext(counter_m),
+				.plaintext(ctr_in),
 				.roundkey(roundkey_m_out),
 				.ciphertext(keystream),
 				.key_address(read_key_address),
@@ -144,6 +148,7 @@ module aes_ctr #(
 					mem_key_rw <= 1'b0;
 					done_reg <= 1'b0;
 					key_expand_ready <= 1'b0;
+					i <= 32'b0;
 
 				end
 				else begin 
@@ -173,7 +178,8 @@ module aes_ctr #(
 					if (next_state_m == IDLE_m) begin
 						key_expand_ready <= 1'b0;
 					end
-					
+					if (block_encryption_finish_m)
+						i <= i + 1;
 				end
 			end
 		
@@ -215,7 +221,9 @@ module aes_ctr #(
 				cipher_start_all  = 1'b0 ;
 				mem_key_rw_next   = mem_key_rw;
 				done_reg_next     = done_reg;
-		
+				
+				ctr_in = counter_m + i;
+				
 				case (state_m)
 					IDLE_m: begin
 						mem_key_rw_next = 1'b0;

@@ -1,7 +1,7 @@
 module aes_top #(
     parameter integer KEY_SIZE  = 128,
     parameter integer DOP       = 1,
-    parameter integer MODE      = 0
+    parameter integer MODE      = 1
 )(
     input                     clk,
     input                     rst_n,
@@ -28,13 +28,18 @@ module aes_top #(
 	 
 	 output [127:0] next_encstate_out,
 	 output  [3:0]   round_counter_out,
-	 output round_mem_we
+	 output round_mem_we,
+	 
+	 input [31:0]         length_reg
 	 
 	 
 );
 
     localparam integer ECB_MODE = 0;
     localparam integer CTR_MODE = 1;
+    localparam integer CBC_MODE = 2;
+    localparam integer CFB_MODE = 3;
+    localparam integer OFB_MODE = 4;
 
     genvar i;
 
@@ -49,8 +54,9 @@ module aes_top #(
     // ECB generation
     // ------------------------------------------------
     generate
+	 
         if (MODE == ECB_MODE) begin : GEN_ECB
-
+/*
             // -----------------------------
             // MAIN ECB instance (index 0)
             // -----------------------------
@@ -140,7 +146,7 @@ module aes_top #(
             end
 
             assign valid_dout = done_m;
-
+*/
         end		  
 		  
 				else if (MODE == CTR_MODE) begin : GEN_CTR
@@ -243,9 +249,123 @@ module aes_top #(
             assign valid_dout = done_m;
 
         end
+	/*	  
+		  		else if (MODE == CBC_MODE) begin : GEN_CBC 
+	  
+            // -----------------------------
+            // MAIN ECB instance (index 0)
+            // -----------------------------
+            aes_cbc #(
+                .KEY_SIZE(KEY_SIZE)
+            ) cbc_main (
+                .clk                   (clk),
+                .rst_n                 (rst_n),
+
+                .init                  (init),
+                .dec                   (dec),
+                .og_key                (og_key),
+                .text_in               (text_in[127:0]),
+                .terminate_session     (terminate_session),
+					 
+					 .iv							(iv),
+
+                .text_out              (text_out[127:0]),
+                .done            		(done_m),
+					 
+					 .valid_in_key_aes   (valid_in_key_aes),
+					 .valid_in_block_aes (valid_in_block_aes),
+					 
+					 .key_expand_ready   (key_expand_ready),
+       
+					 .next_encstate_out  (next_encstate_out),
+					 .round_counter_out  (round_counter_out),
+					 .round_mem_we       (round_mem_we)
+					 
+            );
+
+            assign valid_dout = done_m;
+
+        end
 		  
 		  
+			else if (MODE == CFB_MODE) begin : GEN_CFB
+			
+				// -----------------------------
+				// MAIN CFB instance (index 0)
+				// -----------------------------
+				aes_cfb #(
+					.KEY_SIZE(KEY_SIZE)
+				) cfb_main (
+					.clk               (clk),
+					.rst_n              (rst_n),
+			
+					.init              (init),
+					.dec               (dec),              // used only for chaining rule inside aes_cfb
+					.og_key            (og_key),
+					.iv                (iv),
+			
+					.text_in           (text_in),
+					.terminate_session (terminate_session),
+			
+					.valid_in_key_aes   (valid_in_key_aes),
+					.valid_in_block_aes (valid_in_block_aes),
+			
+					.text_out          (text_out),
+					.done              (done_m),
+			
+					.key_expand_ready  (key_expand_ready),
+			
+					.next_encstate_out (next_encstate_out),
+					.round_counter_out (round_counter_out),
+					.round_mem_we      (round_mem_we)
+				);
+			
+				assign valid_dout = done_m;
+			
+				end
+
+
+
+			else if (MODE == OFB_MODE) begin : GEN_OFB
+
+				// -----------------------------
+				// MAIN OFB instance (index 0)
+				// -----------------------------
+				
+				aes_ofb #(
+					.KEY_SIZE(KEY_SIZE)
+				) ofb_main (
+					.clk               (clk),
+					.rst_n              (rst_n),
+			
+					.init              (init),
+					.dec               (dec),              // unused inside aes_ofb (kept for compatibility)
+					.og_key            (og_key),
+					.iv                (iv),
+			
+					.text_in           (text_in),          // if DOP>1 later: use text_in[127:0]
+					.terminate_session (terminate_session),
+			
+					.valid_in_key_aes   (valid_in_key_aes),
+					.valid_in_block_aes (valid_in_block_aes),
+			
+					.text_out          (text_out),
+					.done              (done_m),
+			
+					.key_expand_ready  (key_expand_ready),
+			
+					.next_encstate_out (next_encstate_out),
+					.round_counter_out (round_counter_out),
+					.round_mem_we      (round_mem_we)
+				);
+			
+				assign valid_dout = done_m;
+			
+
+			end
 		  
+		  
+*/		  
     endgenerate
 	 
 	 

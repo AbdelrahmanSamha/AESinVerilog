@@ -1,7 +1,7 @@
 module aes_uart_top #(
     parameter integer KEY_SIZE = 128,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 0
+    parameter integer MODE     = 1
 )(
     input  wire        clk,
     input  wire        rst_n,
@@ -253,7 +253,9 @@ module aes_uart_top #(
 		  
 		  .next_encstate_out(next_encstate_out),
 		  .round_counter_out(round_counter_out),
-		  .round_mem_we(round_mem_we)
+		  .round_mem_we(round_mem_we),
+		  
+        .length_reg   (length_reg)
     );
 
 	 
