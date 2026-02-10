@@ -1,7 +1,7 @@
 module aes_uart_top #(
     parameter integer KEY_SIZE = 128,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 1
+    parameter integer MODE     = 0
 )(
     input  wire        clk,
     input  wire        rst_n,

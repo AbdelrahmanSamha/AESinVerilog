@@ -56,7 +56,7 @@ module aes_top #(
     generate
 	 
         if (MODE == ECB_MODE) begin : GEN_ECB
-/*
+
             // -----------------------------
             // MAIN ECB instance (index 0)
             // -----------------------------
@@ -146,7 +146,7 @@ module aes_top #(
             end
 
             assign valid_dout = done_m;
-*/
+
         end		  
 		  
 				else if (MODE == CTR_MODE) begin : GEN_CTR
@@ -249,7 +249,7 @@ module aes_top #(
             assign valid_dout = done_m;
 
         end
-	/*	  
+		  
 		  		else if (MODE == CBC_MODE) begin : GEN_CBC 
 	  
             // -----------------------------
@@ -365,7 +365,7 @@ module aes_top #(
 			end
 		  
 		  
-*/		  
+	  
     endgenerate
 	 
 	 
