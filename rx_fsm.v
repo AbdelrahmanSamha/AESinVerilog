@@ -7,6 +7,8 @@ module rx_fsm #(
 
     input  wire        rx_valid,
     input  wire [7:0]  rx_byte,
+	 
+	 input [2:0] mode_sel,
 
     // ---- to BUFFER ----
     output reg         buf_cmd_we,
@@ -36,7 +38,10 @@ module rx_fsm #(
         (KEY_SIZE == 192) ? 24 : 32;
 
     localparam integer ECB = 0;
-    wire iv_needed = (MODE != ECB);
+    localparam integer VAR_MODES = 5;
+    wire iv_needed;
+	 
+	 assign iv_needed = !((MODE == ECB) || (MODE == VAR_MODES && mode_sel == 3'b000));
 
     // ----------------------------
     // States

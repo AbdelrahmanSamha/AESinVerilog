@@ -1,7 +1,7 @@
 module aes_uart_top #(
     parameter integer KEY_SIZE = 128,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 0
+    parameter integer MODE     = 5
 )(
     input  wire        clk,
     input  wire        rst_n,
@@ -17,6 +17,8 @@ module aes_uart_top #(
 	*/ 
 	 input  wire 			uart_rx,       // Incoming serial line
     output wire 			uart_tx        // Outgoing serial line
+	 
+
 );
 
     // ============================================================
@@ -86,7 +88,10 @@ module aes_uart_top #(
     wire                key_expand_ready;
 	 
 	 wire finish_cmd_rst;
-
+	 
+	 wire [2:0] mode_sel;
+	
+	 assign mode_sel = flags_reg[2:0];
     assign aes_out = aes_out_bus[127:0];
 
     // capture output in buffer if you want (optional)
@@ -142,7 +147,9 @@ module aes_uart_top #(
         .length_out  (rx_length),
 
         .buf_commit  (rx_commit),
-        .rx_done     (rx_done)
+        .rx_done     (rx_done),
+		  
+		  .mode_sel(mode_sel)
     );
 
     // ============================================================
@@ -219,7 +226,10 @@ module aes_uart_top #(
         .dec              (dec),
         .valid_in_key_aes (valid_in_key_aes),
         .valid_in_block_aes(valid_in_block_aes),
-		  .finish_cmd_rst(finish_cmd_rst)
+		  .finish_cmd_rst(finish_cmd_rst),
+		  
+		  .mode_sel(mode_sel)
+
 
     );
 
@@ -255,7 +265,8 @@ module aes_uart_top #(
 		  .round_counter_out(round_counter_out),
 		  .round_mem_we(round_mem_we),
 		  
-        .length_reg   (length_reg)
+        .length_reg   (length_reg),
+		  .mode_sel(mode_sel)
     );
 
 	 

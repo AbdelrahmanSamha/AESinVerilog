@@ -8,6 +8,8 @@ module core_fsm #(
     input  wire        cmd_ready,      // 1-cycle pulse
     input  wire        flags_ready,    // 1-cycle pulse
     input  wire        length_ready,   // 1-cycle pulse
+    
+	 input  wire [2:0]  mode_sel,  
 
     input  wire [7:0]  cmd_reg,
     input  wire [7:0]  flags_reg,
@@ -41,9 +43,13 @@ module core_fsm #(
     localparam integer ECB_MODE = 0;
 	 localparam [7:0] CMD_AES = 8'h01;
     localparam BLOCK_LAB = 8'h02;
+    localparam integer VAR_MODES = 5;
+
 	 
 	 
-    wire iv_needed = (MODE != ECB_MODE);
+    wire iv_needed ;
+	 
+	 assign iv_needed = !((MODE == ECB_MODE) || (MODE == VAR_MODES && mode_sel == 3'b000));
 
     wire have_key = key_ready && (iv_needed ? iv_ready : 1'b1);
 
