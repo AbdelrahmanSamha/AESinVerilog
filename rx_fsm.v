@@ -1,6 +1,8 @@
 module rx_fsm #(
     parameter integer KEY_SIZE = 128,
-    parameter integer MODE     = 0   // 0=ECB, 1=CBC, 2=CTR, 3=OFB, 4=CFB
+    parameter integer MODE     = 0,   // 0=ECB, 1=CBC, 2=CTR, 3=OFB, 4=CFB
+    parameter integer FIXED_VARKEY_MODE     = 0   // 0=ECB, 1=CBC, 2=CTR, 3=OFB, 4=CFB
+
 )(
     input  wire        clk,
     input  wire        reset_n,     // ACTIVE-low reset
@@ -39,9 +41,12 @@ module rx_fsm #(
 
     localparam integer ECB = 0;
     localparam integer VAR_MODES = 5;
+    localparam integer VAR_KEYS = 6;
+    localparam integer FULL = 7;
     wire iv_needed;
 	 
-	 assign iv_needed = !((MODE == ECB) || (MODE == VAR_MODES && mode_sel == 3'b000));
+	 assign iv_needed = !((MODE == ECB) || (MODE == VAR_MODES && mode_sel == 3'b000)
+							 || (MODE == VAR_KEYS && FIXED_VARKEY_MODE == 0) || (MODE == FULL && mode_sel == 3'b000));
 
     // ----------------------------
     // States

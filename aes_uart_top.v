@@ -1,7 +1,8 @@
 module aes_uart_top #(
-    parameter integer KEY_SIZE = 128,
+    parameter integer KEY_SIZE = 256,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 5
+    parameter integer MODE     = 7,
+    parameter integer FIXED_VARKEY_MODE = 0 
 )(
     input  wire        clk,
     input  wire        rst_n,
@@ -90,8 +91,10 @@ module aes_uart_top #(
 	 wire finish_cmd_rst;
 	 
 	 wire [2:0] mode_sel;
+	 wire [1:0] key_size_sel;
 	
 	 assign mode_sel = flags_reg[2:0];
+	 assign key_size_sel = flags_reg[7:6];
     assign aes_out = aes_out_bus[127:0];
 
     // capture output in buffer if you want (optional)
@@ -121,7 +124,8 @@ module aes_uart_top #(
     // ============================================================
     rx_fsm #(
         .KEY_SIZE(KEY_SIZE),
-        .MODE    (MODE)
+        .MODE    (MODE),
+		  .FIXED_VARKEY_MODE(FIXED_VARKEY_MODE)
     ) u_rx_fsm (
         .clk        (clk),
         .reset_n    (rst_n),
@@ -202,7 +206,8 @@ module aes_uart_top #(
     // CORE CONTROL FSM (header gating + blk_sent protection)
     // ============================================================
     core_fsm #(
-        .MODE    (MODE)
+        .MODE    (MODE),
+		  .FIXED_VARKEY_MODE(FIXED_VARKEY_MODE)
     ) u_core (
         .clk        (clk),
         .rst_n      (rst_n),
@@ -239,7 +244,8 @@ module aes_uart_top #(
     aes_top #(
         .KEY_SIZE(KEY_SIZE),
         .DOP     (DOP),
-        .MODE    (MODE)
+        .MODE    (MODE),
+		  .FIXED_VARKEY_MODE(FIXED_VARKEY_MODE)
     ) u_aes (
         .clk        (clk),
         .rst_n      (rst_n && finish_cmd_rst),
@@ -266,7 +272,8 @@ module aes_uart_top #(
 		  .round_mem_we(round_mem_we),
 		  
         .length_reg   (length_reg),
-		  .mode_sel(mode_sel)
+		  .mode_sel(mode_sel),
+		  .key_size_sel(key_size_sel)
     );
 
 	 
