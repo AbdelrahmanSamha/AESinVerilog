@@ -9,6 +9,7 @@ module core_fsm #(
     input  wire        cmd_ready,      // 1-cycle pulse
     input  wire        flags_ready,    // 1-cycle pulse
     input  wire        length_ready,   // 1-cycle pulse
+    input  wire        tx_done,   // 1-cycle pulse
     
 	 input  wire [2:0]  mode_sel,  
 
@@ -32,9 +33,7 @@ module core_fsm #(
     output reg         valid_in_block_aes,  // 1-cycle pulse (blk_sent protected)
 	 
 	 output reg			  finish_cmd_rst // rst after finish frame and operation 
-	 
-	 
-	 
+
 
 );
 
@@ -58,13 +57,14 @@ module core_fsm #(
     // ============================================================
     // state encoding
     // ============================================================
-    localparam [1:0]
-        S_WAIT_HDR   = 2'b00,
-        S_KEYEXP     = 2'b01,
-        S_BLOCKS     = 2'b10,
-        S_DONE       = 2'b11;
+    localparam [2:0]
+        S_WAIT_HDR   = 3'b000,
+        S_KEYEXP     = 3'b001,
+        S_BLOCKS     = 3'b010,
+        S_WAIT_TX    = 3'b011,
+        S_DONE       = 3'b100;
 
-    reg [1:0] state, next_state;
+    reg [2:0] state, next_state;
 
     // ============================================================
     // header latch flags (because pulses are 1 cycle)
@@ -81,6 +81,7 @@ module core_fsm #(
     // ============================================================
     reg blk_sent, blk_sent_n;
     reg key_sent, key_sent_n;
+    reg got_tx_done, got_tx_done_n;
 
     // ============================================================
     // block counting (based on length_reg bytes)
@@ -112,6 +113,8 @@ module core_fsm #(
 
             blocks_total <= 32'd0;
             block_index  <= 32'd0;
+            got_tx_done <= 1'b0;
+				
         end else begin
             state        <= next_state;
 
@@ -124,6 +127,8 @@ module core_fsm #(
 
             blocks_total <= blocks_total_n;
             block_index  <= block_index_n;
+            
+				got_tx_done <= got_tx_done_n;
 
             // latch dec bit when flags arrive
             if (flags_ready) begin
@@ -151,9 +156,16 @@ module core_fsm #(
 
             S_BLOCKS: begin
                 if (aes_done && last_block)
-                    next_state = S_DONE;
+                    next_state = S_WAIT_TX;
                 else
                     next_state = S_BLOCKS;
+            end
+				
+            S_WAIT_TX: begin
+                if (got_tx_done)              
+                    next_state = S_DONE;
+                else
+                    next_state = S_WAIT_TX;
             end
 
             S_DONE: begin
@@ -187,6 +199,7 @@ module core_fsm #(
 
         blocks_total_n = blocks_total;
         block_index_n  = block_index;
+        got_tx_done_n = got_tx_done;
 
         // -------------------------
         // header latch updates
@@ -211,6 +224,9 @@ module core_fsm #(
         // -------------------------
         if (!block_ready)
             blk_sent_n = 1'b0;
+				
+        if (tx_done)
+            got_tx_done_n = 1'b1;
 
         case (state)
             S_WAIT_HDR: begin
@@ -228,8 +244,7 @@ module core_fsm #(
                     got_cmd_n   = 1'b0;
                     got_flags_n = 1'b0;
                     got_len_n   = 1'b0;
-
-
+                    got_tx_done_n = 1'b0;
                 end
             end
 
@@ -256,9 +271,12 @@ module core_fsm #(
                     // if last_block, next_state goes to DONE
                 end
             end
+				
+				S_WAIT_TX: begin
+                // nothing;
+            end
 
             S_DONE: begin
-                // nothing; will go back to WAIT_HDR and wait next header
 						finish_cmd_rst = 1'b0;
 
             end

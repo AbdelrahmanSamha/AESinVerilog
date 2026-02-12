@@ -39,7 +39,9 @@ module aes_buffer #(
 
     output reg key_ready,      // sticky high until key starts writing again
     output reg iv_ready,       // sticky high until iv starts writing again
-    output reg block_ready     // sticky high until block starts writing again
+    output reg block_ready,    // sticky high until block starts writing again
+	 
+    output reg out_block_valid 
 );
 
     // ====================================================
@@ -79,6 +81,8 @@ module aes_buffer #(
             key_ready   <= 1'b0;
             iv_ready    <= 1'b0;
             block_ready <= 1'b0;
+				
+            out_block_valid <= 1'b0;
 
         end else begin
             // ----------------------------
@@ -87,6 +91,8 @@ module aes_buffer #(
             cmd_ready    <= 1'b0;
             flags_ready  <= 1'b0;
             length_ready <= 1'b0;
+				out_block_valid <= 1'b0; 
+
 
             // ----------------------------
             // CMD (1 byte)
@@ -161,8 +167,9 @@ module aes_buffer #(
             end
 
             // ================= AES OUTPUT (128-bit, one-shot) =================
-            if (out_we) begin
+				if (out_we) begin
                 out_block <= aes_out_block;
+					 out_block_valid <= 1'b1; 
             end
         end
     end

@@ -1,7 +1,7 @@
 module aes_uart_top #(
-    parameter integer KEY_SIZE = 256,
+    parameter integer KEY_SIZE = 128,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 7,
+    parameter integer MODE     = 0,
     parameter integer FIXED_VARKEY_MODE = 0 
 )(
     input  wire        clk,
@@ -72,6 +72,7 @@ module aes_uart_top #(
     wire                key_ready;
     wire                iv_ready;
     wire                block_ready;
+    wire                out_block_valid;
 
     // ============================================================
     // optional: buffer capture of AES output (DECLARE ALL)
@@ -118,6 +119,7 @@ module aes_uart_top #(
     wire tx_valid;   
     wire [7:0] tx_byte;
     wire tx_ready;         
+    wire tx_done;         
 
     // ============================================================
     // RX FSM
@@ -199,7 +201,8 @@ module aes_uart_top #(
 
         .key_ready    (key_ready),
         .iv_ready     (iv_ready),
-        .block_ready  (block_ready)
+        .block_ready  (block_ready),
+        .out_block_valid  (out_block_valid)
     );
 
     // ============================================================
@@ -233,7 +236,8 @@ module aes_uart_top #(
         .valid_in_block_aes(valid_in_block_aes),
 		  .finish_cmd_rst(finish_cmd_rst),
 		  
-		  .mode_sel(mode_sel)
+		  .mode_sel(mode_sel),
+		  .tx_done(tx_done)
 
 
     );
@@ -303,15 +307,16 @@ module aes_uart_top #(
         .tx_valid   (tx_valid),
         .tx_byte    (tx_byte),
 
-        .aes_done   (aes_done),
-        .aes_result (aes_out),
+        .aes_done   (out_block_valid),
+        .aes_result (out_block),
 
         .cmd_in     (cmd_reg),
 	
 		  .round_rd_addr(round_rd_addr),
 		  .round_rd_data(round_mem_out),
 
-			.tx_busy()
+		  .tx_busy(),
+		  .tx_done(tx_done)
 
      
     );

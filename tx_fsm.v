@@ -38,7 +38,9 @@ module tx_fsm #(
     input  wire [127:0] round_rd_data,
 
     // status
-    output reg         tx_busy
+    output reg         tx_busy,
+    output reg         tx_done
+	 
 );
 
     // ------------------------------------------------------------
@@ -208,6 +210,7 @@ module tx_fsm #(
         // defaults
         tx_valid = 1'b0;
         tx_byte  = 8'h00;
+		  tx_done = 1'b0;
 
         data_idx_n  = data_idx;
         round_idx_n = round_idx;
@@ -253,6 +256,10 @@ module tx_fsm #(
                 end
             end
         endcase
+		  
+				if ((state == S_DATA) && (next_state == S_IDLE))
+						tx_done = 1'b1;
+						
     end
 
 endmodule
