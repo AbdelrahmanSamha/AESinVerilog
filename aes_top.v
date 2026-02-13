@@ -1198,6 +1198,9 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
     reg [127:0] text_out_sel;
     reg         valid_dout_sel;
     reg         keyr_sel;
+	 
+	 wire dec_aes_core;
+    assign dec_aes_core = dec && ((mode_sel == 3'd0) || (mode_sel == 3'd2));
 
     always @(*) begin
         cipher_start_sel  = 1'b0;
@@ -1288,7 +1291,7 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_128),
         .ciphertext    (aes_raw_out_128),
@@ -1349,7 +1352,7 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_192),
         .ciphertext    (aes_raw_out_192),
@@ -1410,7 +1413,7 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_256),
         .ciphertext    (aes_raw_out_256),
