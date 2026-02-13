@@ -36,10 +36,12 @@ module aes_uart_top #(
     wire        buf_cmd_we;
     wire        buf_flags_we;
     wire        buf_len_we;
+    wire        sha_out_we;
 
     wire        buf_key_we;
     wire        buf_iv_we;
     wire        buf_block_we;
+    wire        buf_sha_we;
 
     wire [31:0] buf_data_addr;
     wire [7:0]  buf_wbyte;
@@ -68,10 +70,14 @@ module aes_uart_top #(
     wire [KEY_SIZE-1:0] key_reg;
     wire [127:0]        iv_reg;
     wire [127:0]        block_reg;
+	 
+    wire [255:0]        sha_out_hash;
+    wire [255:0]        sha_out_reg;
 
     wire                key_ready;
     wire                iv_ready;
     wire                block_ready;
+    wire                sha_ready;
 
     // ============================================================
     // optional: buffer capture of AES output (DECLARE ALL)
@@ -79,6 +85,8 @@ module aes_uart_top #(
     wire                out_we;
     wire [127:0]        aes_out_block;
     wire [127:0]        out_block;
+
+	 wire [512:0]        sha_block_reg;
 
     // ============================================================
     // AES → TX signals
@@ -141,6 +149,7 @@ module aes_uart_top #(
         .buf_key_we    (buf_key_we),
         .buf_iv_we     (buf_iv_we),
         .buf_data_we   (buf_block_we),
+        .buf_sha_we   (buf_sha_we),
 
         .buf_data_addr (buf_data_addr),
         .buf_wbyte     (buf_wbyte),
@@ -177,6 +186,7 @@ module aes_uart_top #(
         .key_we     (buf_key_we),
         .iv_we      (buf_iv_we),
         .block_we   (buf_block_we),
+        .sha_we   (buf_sha_we),
 
         // AES output capture (optional)
         .out_we         (out_we),
@@ -191,6 +201,7 @@ module aes_uart_top #(
         .iv_reg     (iv_reg),
         .block_reg  (block_reg),
         .out_block  (out_block),
+        .sha_block_reg  (sha_block_reg),
 
         // status
         .cmd_ready    (cmd_ready),
@@ -199,7 +210,13 @@ module aes_uart_top #(
 
         .key_ready    (key_ready),
         .iv_ready     (iv_ready),
-        .block_ready  (block_ready)
+        .block_ready  (block_ready),
+		  
+        .sha_ready    (sha_ready),
+		  .sha_out_we   (sha_out_we),
+		  .sha_out_hash (sha_out_hash),
+		  .sha_out_reg (sha_out_reg)
+
     );
 
     // ============================================================

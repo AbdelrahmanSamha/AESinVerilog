@@ -39,7 +39,7 @@
 
 set_global_assignment -name FAMILY "MAX 10"
 set_global_assignment -name DEVICE 10M50DAF484C7G
-set_global_assignment -name TOP_LEVEL_ENTITY aes_uart_top
+set_global_assignment -name TOP_LEVEL_ENTITY toplevel_hash
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 24.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "21:54:22  OCTOBER 31, 2025"
 set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 Lite Edition"
@@ -57,7 +57,7 @@ set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name EDA_TEST_BENCH_ENABLE_STATUS TEST_BENCH_MODE -section_id eda_simulation
-set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH UART_new_TB -section_id eda_simulation
+set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH tb_toplevel_hash -section_id eda_simulation
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_system_top_FSM -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_system_top_FSM
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_system_top_FSM -section_id tb_system_top_FSM
@@ -102,9 +102,6 @@ set_global_assignment -name VERILOG_FILE control_fsm_rx.v
 set_global_assignment -name VERILOG_FILE control_fsm_tx.v
 set_global_assignment -name VERILOG_FILE aes_uart_top.v
 set_global_assignment -name VERILOG_FILE tb_aes_uart_top.v
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_aes_uart_top -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_aes_uart_top
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_aes_uart_top -section_id tb_aes_uart_top
@@ -120,11 +117,6 @@ set_global_assignment -name VERILOG_FILE UART_new_TB.v
 set_global_assignment -name EDA_TEST_BENCH_NAME UART_new_TB -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id UART_new_TB
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME UART_new_TB -section_id UART_new_TB
-set_global_assignment -name EDA_TEST_BENCH_FILE tb_system_top_FSM.v -section_id tb_system_top_FSM
-set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_keyexpand.v -section_id tb_aes_keyexpand
-set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_block_ke_mem.v -section_id tb_aes_block_ke_mem
-set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_uart_top.v -section_id tb_aes_uart_top
-set_global_assignment -name EDA_TEST_BENCH_FILE UART_new_TB.v -section_id UART_new_TB
 set_global_assignment -name VERILOG_FILE aes_ctr.v
 set_global_assignment -name VERILOG_FILE aes_cbc.v
 set_global_assignment -name VERILOG_FILE aes_ofb.v
@@ -134,4 +126,20 @@ set_global_assignment -name VERILOG_FILE aes_ofb_var.v
 set_global_assignment -name VERILOG_FILE aes_cfb_var.v
 set_global_assignment -name VERILOG_FILE aes_ecb_var.v
 set_global_assignment -name VERILOG_FILE aes_ctr_var.v
+set_global_assignment -name VERILOG_FILE toplevel_hash.v
+set_global_assignment -name VERILOG_FILE tb_toplevel_hash.v
+set_global_assignment -name VERILOG_FILE sha256_round.v
+set_global_assignment -name VERILOG_FILE SHA256.v
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name EDA_TEST_BENCH_FILE tb_system_top_FSM.v -section_id tb_system_top_FSM
+set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_keyexpand.v -section_id tb_aes_keyexpand
+set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_block_ke_mem.v -section_id tb_aes_block_ke_mem
+set_global_assignment -name EDA_TEST_BENCH_FILE tb_aes_uart_top.v -section_id tb_aes_uart_top
+set_global_assignment -name EDA_TEST_BENCH_FILE UART_new_TB.v -section_id UART_new_TB
+set_global_assignment -name EDA_TEST_BENCH_NAME tb_toplevel_hash -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_toplevel_hash
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_toplevel_hash -section_id tb_toplevel_hash
+set_global_assignment -name EDA_TEST_BENCH_FILE tb_toplevel_hash.v -section_id tb_toplevel_hash
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
