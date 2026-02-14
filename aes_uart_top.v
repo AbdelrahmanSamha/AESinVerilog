@@ -119,7 +119,30 @@ module aes_uart_top #(
     wire tx_valid;   
     wire [7:0] tx_byte;
     wire tx_ready;         
-    wire tx_done;         
+    wire tx_done;     
+
+	 wire        buf_sha_we;
+	 
+	 wire [511:0] sha_block_reg;
+	 wire         sha_ready;
+	 
+	 wire         sha_out_we;
+	 wire [255:0] sha_out_hash;
+	 
+	 wire         out_sha_valid;
+	 wire [255:0] sha_out_reg;
+	 	
+	 wire         sha_sys_start;
+	 wire         sha_valid_data;
+	 
+	 wire         trng_start;
+	 wire         trng_done;
+	 wire [255:0] trng_data;
+	 
+	 wire [255:0] sha_trng_result;
+	 wire sha_trng_done;
+	 wire is_trng_cmd;
+
 
     // ============================================================
     // RX FSM
@@ -143,6 +166,7 @@ module aes_uart_top #(
         .buf_key_we    (buf_key_we),
         .buf_iv_we     (buf_iv_we),
         .buf_data_we   (buf_block_we),
+		  .buf_sha_we    (buf_sha_we),
 
         .buf_data_addr (buf_data_addr),
         .buf_wbyte     (buf_wbyte),
@@ -202,7 +226,19 @@ module aes_uart_top #(
         .key_ready    (key_ready),
         .iv_ready     (iv_ready),
         .block_ready  (block_ready),
-        .out_block_valid  (out_block_valid)
+        .out_block_valid  (out_block_valid),
+
+		  .sha_we        (buf_sha_we),
+
+		  .sha_out_we    (sha_trng_done),
+		  .sha_out_hash  (sha_trng_result),
+		  
+		  .sha_block_reg (sha_block_reg),
+		  .sha_ready     (sha_ready),
+		  
+		  .out_sha_valid (out_sha_valid),
+		  .sha_out_reg   (sha_out_reg)
+
     );
 
     // ============================================================
@@ -237,9 +273,18 @@ module aes_uart_top #(
 		  .finish_cmd_rst(finish_cmd_rst),
 		  
 		  .mode_sel(mode_sel),
-		  .tx_done(tx_done)
+		  .tx_done(tx_done),
 
-
+		  .sha_ready      (sha_ready),
+		  .sha_hash_valid (out_sha_valid),   // buffer pulses this when hash captured
+		  
+		  .sha_sys_start     (sha_sys_start),
+		  .sha_valid_data    (sha_valid_data),
+		  
+		  .trng_start    (trng_start),
+		  .trng_done     (trng_done),
+		  .cmd_is_trng   (is_trng_cmd)
+			 
     );
 
     // ============================================================
@@ -275,7 +320,6 @@ module aes_uart_top #(
 		  .round_counter_out(round_counter_out),
 		  .round_mem_we(round_mem_we),
 		  
-        .length_reg   (length_reg),
 		  .mode_sel(mode_sel),
 		  .key_size_sel(key_size_sel)
     );
@@ -316,7 +360,10 @@ module aes_uart_top #(
 		  .round_rd_data(round_mem_out),
 
 		  .tx_busy(),
-		  .tx_done(tx_done)
+		  .tx_done(tx_done),
+		  
+		  .sha_done   (out_sha_valid),
+		  .sha_result (sha_out_reg)
 
      
     );
@@ -330,11 +377,55 @@ module aes_uart_top #(
 			);
 			
 	assign round_mem_sel = round_mem_we;
+	 
+	 // ============================================================
+	 // SHA TOP
+	 // ============================================================
+	 toplevel_hash u_sha (
+		 .clk        (clk),
+		 .rst_n      (rst_n && finish_cmd_rst),   // reset SHA when session resets
+		 .sys_start  (sha_sys_start),
+		 .length     (length_reg),
+		 .valid_data (sha_valid_data),
+		 .data       (sha_block_reg),
+	 
+		 .hash_out   (sha_out_hash),
+		 .hash_valid (sha_out_we)
+	 );
+	 
+	 // ============================================================
+	 // TRNG TOP
+	 // ============================================================
+			TRNG u_trng (
+			.clk        (clk),
+			.rst_n      (rst_n && finish_cmd_rst),  // reset with session reset
+			.start      (trng_start),
+			.enable_osc (),                     
+			.done       (trng_done),
+			.random_data(trng_data)
+		);
+		
 
+		
+		mux2to1 #(.WIDTH(256)) u_mux_sha_trng_data (
+			.in0 (sha_out_hash),    // SHA path
+			.in1 (trng_data),   // TRNG path
+			.sel (is_trng_cmd),
+			.out (sha_trng_result)
+		);
+		
+		
+		mux2to1 #(.WIDTH(1)) u_mux_sha_trng_valid (
+			.in0 (sha_out_we),   // SHA done pulse
+			.in1 (trng_done),  // TRNG done pulse
+			.sel (is_trng_cmd),
+			.out (sha_trng_done)
+		);
+		
     // ============================================================
     // uart_rx
     // ============================================================
-		     uart_rx u_uart_rx (
+		  uart_rx u_uart_rx (
         .clk(clk),
         .reset(rst_n),
         .uart_rx(uart_rx),

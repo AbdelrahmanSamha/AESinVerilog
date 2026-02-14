@@ -17,10 +17,15 @@ module aes_buffer #(
     input  wire        key_we,     // byte write enable
     input  wire        iv_we,      // byte write enable
     input  wire        block_we,   // byte write enable
+    input  wire        sha_we,   // byte write enable
 
     // ================= AES OUTPUT =================
     input  wire        out_we,          // 1-cycle pulse
     input  wire [127:0] aes_out_block,  // full 128-bit block
+	 
+	 // ================= SHA OUTPUT =================
+	 input  wire         sha_out_we,       // 1-cycle pulse (hash_valid)
+	 input  wire [255:0] sha_out_hash,     // hash_out
 
     // ================= STORED REGISTERS =================
     output reg [7:0]          cmd_reg,
@@ -41,7 +46,13 @@ module aes_buffer #(
     output reg iv_ready,       // sticky high until iv starts writing again
     output reg block_ready,    // sticky high until block starts writing again
 	 
-    output reg out_block_valid 
+    output reg out_block_valid,
+    output reg out_sha_valid,
+	 
+	 output reg [511:0] sha_block_reg,  // 512-bit message block buffer
+	 output reg         sha_ready,      // sticky when 64 bytes received
+	 output reg [255:0] sha_out_reg     // stored hash output
+	 
 );
 
     // ====================================================
@@ -55,6 +66,8 @@ module aes_buffer #(
     reg [$clog2(KEY_BYTES):0] key_cnt;
     reg [3:0] iv_cnt;
     reg [3:0] block_cnt;
+	 reg [5:0] sha_cnt;   // counts 0..63 for 64 bytes
+
 
     // ====================================================
     // storage logic
@@ -82,6 +95,11 @@ module aes_buffer #(
             iv_ready    <= 1'b0;
             block_ready <= 1'b0;
 				
+				sha_block_reg <= 512'd0;
+				sha_out_reg   <= 256'd0;
+				sha_cnt       <= 6'd0;
+				sha_ready     <= 1'b0;
+				
             out_block_valid <= 1'b0;
 
         end else begin
@@ -92,6 +110,7 @@ module aes_buffer #(
             flags_ready  <= 1'b0;
             length_ready <= 1'b0;
 				out_block_valid <= 1'b0; 
+				out_sha_valid <= 1'b0; 
 
 
             // ----------------------------
@@ -165,12 +184,35 @@ module aes_buffer #(
                     block_cnt <= block_cnt + 1'b1;
                 end
             end
-
+				
+				// ================= SHA BLOCK (512-bit, 64 bytes) =================
+				if (sha_we) begin
+					// clear sticky ready when a NEW sha block starts arriving
+					if (sha_cnt == 6'd0)
+						sha_ready <= 1'b0;
+				
+					sha_block_reg <= {sha_block_reg[503:0], byte_in};
+				
+					if (sha_cnt == 6'd63) begin
+						sha_ready <= 1'b1;   // sticky high until next sha block starts
+						sha_cnt   <= 6'd0;
+					end else begin
+						sha_cnt <= sha_cnt + 1'b1;
+					end
+				end
+				
             // ================= AES OUTPUT (128-bit, one-shot) =================
 				if (out_we) begin
                 out_block <= aes_out_block;
 					 out_block_valid <= 1'b1; 
             end
+
+				// ================= SHA OUTPUT (256-bit, one-shot) =================
+				if (sha_out_we) begin
+					sha_out_reg <= sha_out_hash;
+					out_sha_valid <= 1'b1; 
+				end
+				
         end
     end
 

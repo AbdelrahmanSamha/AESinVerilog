@@ -32,9 +32,7 @@ module aes_top #(
 	 
 	 output [127:0] next_encstate_out,
 	 output  [3:0]   round_counter_out,
-	 output round_mem_we,
-	 
-	 input [31:0]         length_reg
+	 output round_mem_we
 	 
 	 
 );

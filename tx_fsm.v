@@ -39,7 +39,10 @@ module tx_fsm #(
 
     // status
     output reg         tx_busy,
-    output reg         tx_done
+    output reg         tx_done,
+	 
+    input  wire        sha_done,      
+    input  wire [255:0] sha_result   
 	 
 );
 
@@ -47,6 +50,7 @@ module tx_fsm #(
     // constants
     // ------------------------------------------------------------
     localparam [7:0]  CMD_BLOCK_LAB = 8'h02;
+	 localparam [7:0]  CMD_SHA       = 8'h03;
 
     localparam integer Nr =
         (KEY_SIZE == 128) ? 10 :
@@ -58,19 +62,23 @@ module tx_fsm #(
     // ------------------------------------------------------------
     // states
     // ------------------------------------------------------------
-    localparam [1:0]
-        S_IDLE   = 2'b00,
-        S_R_ADDR = 2'b01,  // drive addr only (no tx)
-        S_R_SEND = 2'b10,  // send 16 bytes from round_rd_data
-        S_DATA   = 2'b11;  // send 16 bytes of ciphertext
+    localparam [2:0]
+        S_IDLE   = 3'b000,
+        S_R_ADDR = 3'b001,  // drive addr only (no tx)
+        S_R_SEND = 3'b010,  // send 16 bytes from round_rd_data
+        S_DATA   = 3'b011,  // send 16 bytes of ciphertext
+		  S_SHA    = 3'b100;   // send 32 bytes of sha_result
 
-    reg [1:0] state, next_state;
+    reg [2:0] state, next_state;
 
     // ------------------------------------------------------------
     // latched data
     // ------------------------------------------------------------
     reg [127:0] data_lat;
     reg         lab_lat;        // 1 if BLOCK_LAB frame
+	 
+    reg [255:0] sha_lat;
+    reg [5:0]   sha_idx, sha_idx_n; // 0..31
 
     // counters
     reg [4:0]  data_idx, data_idx_n;      // 0..15
@@ -128,6 +136,46 @@ module tx_fsm #(
             endcase
         end
     end
+	 
+		  reg [7:0] sha_byte_sel;
+		  always @(*) begin
+		      sha_byte_sel = 8'h00;
+		   	case (sha_idx)
+		   		6'd0:  sha_byte_sel = sha_lat[255:248];
+		   		6'd1:  sha_byte_sel = sha_lat[247:240];
+		   		6'd2:  sha_byte_sel = sha_lat[239:232];
+		   		6'd3:  sha_byte_sel = sha_lat[231:224];
+		   		6'd4:  sha_byte_sel = sha_lat[223:216];
+		   		6'd5:  sha_byte_sel = sha_lat[215:208];
+		   		6'd6:  sha_byte_sel = sha_lat[207:200];
+		   		6'd7:  sha_byte_sel = sha_lat[199:192];
+		   		6'd8:  sha_byte_sel = sha_lat[191:184];
+		   		6'd9:  sha_byte_sel = sha_lat[183:176];
+		   		6'd10: sha_byte_sel = sha_lat[175:168];
+		   		6'd11: sha_byte_sel = sha_lat[167:160];
+		   		6'd12: sha_byte_sel = sha_lat[159:152];
+		   		6'd13: sha_byte_sel = sha_lat[151:144];
+		   		6'd14: sha_byte_sel = sha_lat[143:136];
+		   		6'd15: sha_byte_sel = sha_lat[135:128];
+		   		6'd16: sha_byte_sel = sha_lat[127:120];
+		   		6'd17: sha_byte_sel = sha_lat[119:112];
+		   		6'd18: sha_byte_sel = sha_lat[111:104];
+		   		6'd19: sha_byte_sel = sha_lat[103:96];
+		   		6'd20: sha_byte_sel = sha_lat[95:88];
+		   		6'd21: sha_byte_sel = sha_lat[87:80];
+		   		6'd22: sha_byte_sel = sha_lat[79:72];
+		   		6'd23: sha_byte_sel = sha_lat[71:64];
+		   		6'd24: sha_byte_sel = sha_lat[63:56];
+		   		6'd25: sha_byte_sel = sha_lat[55:48];
+		   		6'd26: sha_byte_sel = sha_lat[47:40];
+		   		6'd27: sha_byte_sel = sha_lat[39:32];
+		   		6'd28: sha_byte_sel = sha_lat[31:24];
+		   		6'd29: sha_byte_sel = sha_lat[23:16];
+		   		6'd30: sha_byte_sel = sha_lat[15:8];
+		   		default: sha_byte_sel = sha_lat[7:0];
+		   	endcase
+		   end
+		   
 
     // ============================================================
     // 1) State register + latching on aes_done
@@ -138,10 +186,14 @@ module tx_fsm #(
 
             data_lat  <= 128'd0;
             lab_lat   <= 1'b0;
-
+				
+				sha_lat  <= 256'd0;
+				sha_idx  <= 6'd0;
+				
             data_idx  <= 5'd0;
             round_idx <= 4'd0;
             rbyte_idx <= 5'd0;
+				
 
         end else begin
             state <= next_state;
@@ -149,15 +201,21 @@ module tx_fsm #(
             data_idx  <= data_idx_n;
             round_idx <= round_idx_n;
             rbyte_idx <= rbyte_idx_n;
+			   sha_idx   <= sha_idx_n;
 
             if (aes_done) begin
                 data_lat  <= aes_result;
-                lab_lat   <= (cmd_in == CMD_BLOCK_LAB);
-
+                lab_lat   <= (cmd_in == CMD_BLOCK_LAB);				 
+					 
                 data_idx  <= 5'd0;
                 round_idx <= 4'd0;
                 rbyte_idx <= 5'd0;
             end
+				
+            if (sha_done) begin
+                sha_lat <= sha_result;
+                sha_idx <= 6'd0;
+            end	
         end
     end
 
@@ -174,6 +232,9 @@ module tx_fsm #(
                     if (cmd_in == CMD_BLOCK_LAB) next_state = S_R_ADDR;
                     else                         next_state = S_DATA;
                 end
+					 else if (sha_done && (cmd_in == CMD_SHA)) begin
+							 next_state = S_SHA;
+					 end
             end
 
             S_R_ADDR: begin
@@ -199,6 +260,13 @@ module tx_fsm #(
                 end
             end
 
+				S_SHA: begin
+					if (tx_ready) begin
+						if (sha_idx == 6'd31) next_state = S_IDLE;
+						else                  next_state = S_SHA;
+					end
+				end
+				
             default: next_state = S_IDLE;
         endcase
     end
@@ -215,6 +283,8 @@ module tx_fsm #(
         data_idx_n  = data_idx;
         round_idx_n = round_idx;
         rbyte_idx_n = rbyte_idx;
+		  sha_idx_n = sha_idx;
+
 
         tx_busy = (state != S_IDLE);
 
@@ -255,11 +325,27 @@ module tx_fsm #(
                         data_idx_n = 5'd0;
                 end
             end
+
+				S_SHA: begin
+					tx_valid = 1'b1;
+					tx_byte  = sha_byte_sel;
+				
+					if (tx_ready) begin
+						if (sha_idx != 6'd31)
+								sha_idx_n = sha_idx + 6'd1;
+						else
+								sha_idx_n = 6'd0;
+					end
+				end
+				
         endcase
 		  
 				if ((state == S_DATA) && (next_state == S_IDLE))
 						tx_done = 1'b1;
 						
+				if ((state == S_SHA) && (next_state == S_IDLE))
+						tx_done = 1'b1;
+			
     end
 
 endmodule

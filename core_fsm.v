@@ -11,7 +11,8 @@ module core_fsm #(
     input  wire        length_ready,   // 1-cycle pulse
     input  wire        tx_done,   // 1-cycle pulse
     
-	 input  wire [2:0]  mode_sel,  
+	 input  wire [2:0]  mode_sel, 
+	 
 
     input  wire [7:0]  cmd_reg,
     input  wire [7:0]  flags_reg,
@@ -21,7 +22,9 @@ module core_fsm #(
     input  wire        key_ready,
     input  wire        iv_ready,
     input  wire        block_ready,
-
+    input  wire        sha_ready,  
+	 input  wire        sha_hash_valid,
+	 
     // -------- from AES --------
     input  wire        key_expand_ready,  // high when key expansion finished
     input  wire        aes_done,          // indicates block finished
@@ -32,8 +35,15 @@ module core_fsm #(
     output reg         valid_in_key_aes,   // 1-cycle pulse
     output reg         valid_in_block_aes,  // 1-cycle pulse (blk_sent protected)
 	 
-	 output reg			  finish_cmd_rst // rst after finish frame and operation 
-
+	 output reg			  finish_cmd_rst,// rst after finish frame and operation 
+	 
+	 output reg  sha_sys_start,
+	 output reg  sha_valid_data,
+	 
+	 output reg  trng_start,   
+	 input  wire trng_done,
+	 output cmd_is_trng
+	 
 
 );
 
@@ -46,10 +56,14 @@ module core_fsm #(
     localparam integer VAR_MODES = 5;
     localparam integer VAR_KEYS = 6;
     localparam integer FULL = 7;
+		 
+	 localparam [7:0] CMD_SHA = 8'h03;
+	 wire cmd_is_sha = (cmd_reg == CMD_SHA);
 	 
-	 
+	 localparam [7:0] CMD_TRNG = 8'h04;
+	 assign cmd_is_trng = (cmd_reg == CMD_TRNG);
+
     wire iv_needed ;
-	 
 	 assign iv_needed = !((MODE == ECB_MODE) || (MODE == VAR_MODES && mode_sel == 3'b000)
 							 || (MODE == VAR_KEYS && FIXED_VARKEY_MODE == 0) || (MODE == FULL && mode_sel == 3'b000));
     wire have_key = key_ready && (iv_needed ? iv_ready : 1'b1);
@@ -57,14 +71,18 @@ module core_fsm #(
     // ============================================================
     // state encoding
     // ============================================================
-    localparam [2:0]
-        S_WAIT_HDR   = 3'b000,
-        S_KEYEXP     = 3'b001,
-        S_BLOCKS     = 3'b010,
-        S_WAIT_TX    = 3'b011,
-        S_DONE       = 3'b100;
-
-    reg [2:0] state, next_state;
+    localparam [3:0]
+        S_WAIT_HDR     = 4'b0000,
+        S_KEYEXP       = 4'b0001,
+        S_BLOCKS       = 4'b0010,
+        S_WAIT_TX      = 4'b0011,
+		  S_SHA_WAIT     = 4'b0100,
+        S_DONE         = 4'b0101,
+		  S_TRNG_START   = 4'b0110,
+		  S_TRNG_WAIT    = 4'b0111,
+		  S_TRNG_WAIT_TX = 4'b1000;
+		  
+    reg [3:0] state, next_state;
 
     // ============================================================
     // header latch flags (because pulses are 1 cycle)
@@ -72,8 +90,13 @@ module core_fsm #(
     reg got_cmd,   got_cmd_n;
     reg got_flags, got_flags_n;
     reg got_len,   got_len_n;
+	 reg trng_round, trng_round_n;  
 
-    wire hdr_done  = got_cmd & got_flags & got_len;
+
+    wire hdr_done_aes_sha  = got_cmd & got_flags & got_len;
+	 wire hdr_done_trng    =  got_cmd;               
+	 wire hdr_done         =  cmd_is_trng ? hdr_done_trng : hdr_done_aes_sha;
+	 
     wire cmd_is_aes = (cmd_reg == CMD_AES) || (cmd_reg == BLOCK_LAB);
 
     // ============================================================
@@ -82,6 +105,7 @@ module core_fsm #(
     reg blk_sent, blk_sent_n;
     reg key_sent, key_sent_n;
     reg got_tx_done, got_tx_done_n;
+	 reg sha_sent, sha_sent_n;
 
     // ============================================================
     // block counting (based on length_reg bytes)
@@ -92,6 +116,7 @@ module core_fsm #(
 
     wire [31:0] blocks_total_m1 =
         (blocks_total == 32'd0) ? 32'd0 : (blocks_total - 32'd1);
+		 
 
     wire last_block = (block_index == blocks_total_m1);
 
@@ -110,10 +135,12 @@ module core_fsm #(
 
             blk_sent     <= 1'b0;
             key_sent     <= 1'b0;
+			   sha_sent     <= 1'b0; 
 
             blocks_total <= 32'd0;
             block_index  <= 32'd0;
-            got_tx_done <= 1'b0;
+            got_tx_done  <= 1'b0;
+				trng_round <= 1'b0;
 				
         end else begin
             state        <= next_state;
@@ -124,6 +151,9 @@ module core_fsm #(
 
             blk_sent     <= blk_sent_n;
             key_sent     <= key_sent_n;
+				sha_sent     <= sha_sent_n;
+				trng_round   <= trng_round_n;
+
 
             blocks_total <= blocks_total_n;
             block_index  <= block_index_n;
@@ -147,8 +177,35 @@ module core_fsm #(
             S_WAIT_HDR: begin
                 if (hdr_done && cmd_is_aes)
                     next_state = S_KEYEXP;
-            end
-
+					 else if (hdr_done && cmd_is_sha)
+						 next_state = S_SHA_WAIT;
+					 else if (hdr_done && cmd_is_trng)
+					    next_state = S_TRNG_START;
+				end
+			
+				S_TRNG_START:   next_state = S_TRNG_WAIT;
+				
+				S_TRNG_WAIT: begin
+					if (trng_done) next_state = S_TRNG_WAIT_TX;
+					else           next_state = S_TRNG_WAIT;
+				end
+				
+				S_TRNG_WAIT_TX: begin
+					if (got_tx_done) begin
+						if (trng_round == 1'b0)
+								next_state = S_TRNG_START; // second run
+						else
+								next_state = S_DONE;
+					end
+				end
+				
+			   S_SHA_WAIT: begin
+					if (sha_hash_valid)
+						next_state = S_WAIT_TX;  
+					else
+						next_state = S_SHA_WAIT;
+			   end
+				
             S_KEYEXP: begin
                 if (key_expand_ready)
                     next_state = S_BLOCKS;
@@ -186,7 +243,11 @@ module core_fsm #(
         aes_start          = 1'b0;
         valid_in_key_aes   = 1'b0;
         valid_in_block_aes = 1'b0;
-        finish_cmd_rst      = 1'b1;  
+        finish_cmd_rst     = 1'b1;  
+		  sha_sys_start      = 1'b0;
+		  sha_valid_data     = 1'b0;
+		  trng_start         = 1'b0;
+		  
 
 
         // hold regs by default
@@ -196,10 +257,13 @@ module core_fsm #(
 
         blk_sent_n     = blk_sent;
         key_sent_n     = key_sent;
+		  sha_sent_n     = sha_sent;
+		  trng_round_n   = trng_round;
 
         blocks_total_n = blocks_total;
         block_index_n  = block_index;
         got_tx_done_n = got_tx_done;
+
 
         // -------------------------
         // header latch updates
@@ -214,7 +278,7 @@ module core_fsm #(
             got_len_n = 1'b1;
 
             // blocks_total = length_reg / 16
-            blocks_total_n = length_reg[31:4];
+            blocks_total_n = length_reg;
             block_index_n  = 32'd0;
         end
 
@@ -225,6 +289,9 @@ module core_fsm #(
         if (!block_ready)
             blk_sent_n = 1'b0;
 				
+		  if (!sha_ready)
+			   sha_sent_n = 1'b0;
+		
         if (tx_done)
             got_tx_done_n = 1'b1;
 
@@ -245,8 +312,55 @@ module core_fsm #(
                     got_flags_n = 1'b0;
                     got_len_n   = 1'b0;
                     got_tx_done_n = 1'b0;
+						  block_index_n = 32'd0;
                 end
+					 
+					 if (hdr_done && cmd_is_sha) begin
+					 	sha_sys_start     = 1'b1;          // 1-cycle pulse
+					 
+					 	sha_sent_n  = 1'b0;
+					 
+					 	got_cmd_n   = 1'b0;
+					 	got_flags_n = 1'b0;
+					 	got_len_n   = 1'b0;
+                  got_tx_done_n = 1'b0;
+						
+					 end
+			
+					 if (hdr_done && !(cmd_is_aes || cmd_is_sha || cmd_is_trng)) begin
+						 got_cmd_n   = 1'b0;
+						 got_flags_n = 1'b0;
+						 got_len_n   = 1'b0;
+					 end
+					 
+					 if (hdr_done && cmd_is_trng) begin
+						 trng_round_n   = 1'b0;   // first run
+						 got_tx_done_n  = 1'b0;
+						 got_cmd_n     = 1'b0;  
+						 got_flags_n   = 1'b0;   
+						 got_len_n     = 1'b0;   
+					 end
             end
+
+				S_TRNG_START: begin
+					trng_start = 1'b1;       // 1-cycle pulse
+					got_tx_done_n = 1'b0; 
+				end
+				
+				S_TRNG_WAIT_TX: begin
+					if (got_tx_done && (trng_round == 1'b0)) begin
+						trng_round_n  = 1'b1;  // move to second run
+						got_tx_done_n = 1'b0;
+					end
+				end
+				
+				S_SHA_WAIT: begin
+				
+					if (sha_ready && !sha_sent) begin
+						sha_valid_data = 1'b1;  // 1-cycle pulse to SHA top
+						sha_sent_n     = 1'b1;
+					end
+				end
 
             S_KEYEXP: begin
                 // Pulse look: only once when key material becomes available.
