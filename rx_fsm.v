@@ -300,7 +300,6 @@ module rx_fsm #(
 								buf_sha_we = 1'b1;
 						  else
 								buf_data_we = 1'b1;
-					     end
 						  
                     data_cnt_n  = data_cnt - 38'd1;
 
@@ -308,6 +307,7 @@ module rx_fsm #(
                         buf_commit = 1'b1;
                         rx_done    = 1'b1;
                     end
+				   end
             end
        endcase
     end
