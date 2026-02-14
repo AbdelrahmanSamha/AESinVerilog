@@ -42,9 +42,11 @@ module core_fsm #(
 	 
 	 output reg  trng_start,   
 	 input  wire trng_done,
-	 output cmd_is_trng
+	 output wire cmd_is_trng,
 	 
-
+	 input  wire echo_req,
+	 output reg echo_tx_start
+	
 );
 
     // ============================================================
@@ -80,7 +82,9 @@ module core_fsm #(
         S_DONE         = 4'b0101,
 		  S_TRNG_START   = 4'b0110,
 		  S_TRNG_WAIT    = 4'b0111,
-		  S_TRNG_WAIT_TX = 4'b1000;
+		  S_TRNG_WAIT_TX = 4'b1000,
+		  S_ECHO_START   = 4'b1001,
+        S_ECHO_WAIT_TX = 4'b1010;
 		  
     reg [3:0] state, next_state;
 
@@ -175,14 +179,23 @@ module core_fsm #(
 
         case (state)
             S_WAIT_HDR: begin
-                if (hdr_done && cmd_is_aes)
+				    if (echo_req)
+						  next_state = S_ECHO_START;
+                else if (hdr_done && cmd_is_aes)
                     next_state = S_KEYEXP;
 					 else if (hdr_done && cmd_is_sha)
 						 next_state = S_SHA_WAIT;
 					 else if (hdr_done && cmd_is_trng)
 					    next_state = S_TRNG_START;
 				end
-			
+
+				S_ECHO_START:   next_state = S_ECHO_WAIT_TX;
+				
+				S_ECHO_WAIT_TX: begin
+					if (got_tx_done)
+						next_state = S_DONE;
+				end
+				
 				S_TRNG_START:   next_state = S_TRNG_WAIT;
 				
 				S_TRNG_WAIT: begin
@@ -247,7 +260,7 @@ module core_fsm #(
 		  sha_sys_start      = 1'b0;
 		  sha_valid_data     = 1'b0;
 		  trng_start         = 1'b0;
-		  
+		  echo_tx_start      = 1'b0;
 
 
         // hold regs by default
@@ -262,7 +275,7 @@ module core_fsm #(
 
         blocks_total_n = blocks_total;
         block_index_n  = block_index;
-        got_tx_done_n = got_tx_done;
+        got_tx_done_n  = got_tx_done;
 
 
         // -------------------------
@@ -340,8 +353,23 @@ module core_fsm #(
 						 got_flags_n   = 1'b0;   
 						 got_len_n     = 1'b0;   
 					 end
+					 
+					 if (echo_req) begin
+						 got_cmd_n      = 1'b0;
+						 got_flags_n    = 1'b0;
+						 got_len_n      = 1'b0;
+						 got_tx_done_n  = 1'b0;
+						 blk_sent_n     = 1'b0;
+						 key_sent_n     = 1'b0;
+						 sha_sent_n     = 1'b0;
+					 end
             end
 
+				S_ECHO_START: begin
+					echo_tx_start  = 1'b1;   // tell TX to send 0x05
+					got_tx_done_n  = 1'b0;   // clear the old tx_done latch
+				end
+				
 				S_TRNG_START: begin
 					trng_start = 1'b1;       // 1-cycle pulse
 					got_tx_done_n = 1'b0; 

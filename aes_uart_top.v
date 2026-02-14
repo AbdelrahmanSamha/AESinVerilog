@@ -1,7 +1,7 @@
 module aes_uart_top #(
-    parameter integer KEY_SIZE = 256,
+    parameter integer KEY_SIZE = 128,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 7,
+    parameter integer MODE     = 0,
     parameter integer FIXED_VARKEY_MODE = 0 
 )(
     input  wire        clk,
@@ -142,6 +142,9 @@ module aes_uart_top #(
 	 wire [255:0] sha_trng_result;
 	 wire sha_trng_done;
 	 wire is_trng_cmd;
+	 
+    wire echo_req;
+	 wire echo_tx_start;
 
 
     // ============================================================
@@ -179,7 +182,9 @@ module aes_uart_top #(
         .buf_commit  (rx_commit),
         .rx_done     (rx_done),
 		  
-		  .mode_sel(mode_sel)
+		  .mode_sel(mode_sel),
+		  
+		  .echo_req(echo_req)
     );
 
     // ============================================================
@@ -283,8 +288,11 @@ module aes_uart_top #(
 		  
 		  .trng_start    (trng_start),
 		  .trng_done     (trng_done),
-		  .cmd_is_trng   (is_trng_cmd)
-			 
+		  .cmd_is_trng   (is_trng_cmd),
+		  
+		  .echo_req      (echo_req),
+		  .echo_tx_start (echo_tx_start)
+
     );
 
     // ============================================================
@@ -363,9 +371,10 @@ module aes_uart_top #(
 		  .tx_done(tx_done),
 		  
 		  .sha_done   (out_sha_valid),
-		  .sha_result (sha_out_reg)
-
-     
+		  .sha_result (sha_out_reg),
+		  
+		  .echo_tx_start (echo_tx_start)
+		  
     );
 	 
 	 

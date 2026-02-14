@@ -30,7 +30,9 @@ module rx_fsm #(
     output reg  [31:0] length_out,
 
     output reg         buf_commit,
-    output reg         rx_done
+    output reg         rx_done,
+	 
+	 output reg  echo_req 
 );
 
     // ----------------------------
@@ -50,6 +52,8 @@ module rx_fsm #(
 	
 	 localparam [7:0] CMD_TRNG = 8'h04;
 	 
+	 localparam [7:0] CMD_ECHO = 8'h05;   // test: echo this byte back
+
     wire iv_needed;
 	 assign iv_needed = !((MODE == ECB) || (MODE == VAR_MODES && mode_sel == 3'b000)
 							 || (MODE == VAR_KEYS && FIXED_VARKEY_MODE == 0) || (MODE == FULL && mode_sel == 3'b000));
@@ -154,6 +158,8 @@ module rx_fsm #(
                 if (rx_valid) begin 
 						if (rx_byte == CMD_TRNG)
 							next_state = IDLE;
+						else if (rx_byte == CMD_ECHO)
+							next_state = IDLE;
 						else
                     next_state = RECV_FLAGS;
 					 end
@@ -208,12 +214,14 @@ module rx_fsm #(
         buf_key_we   = 1'b0;
         buf_iv_we    = 1'b0;
         buf_data_we  = 1'b0;
-        buf_sha_we  = 1'b0;
+        buf_sha_we   = 1'b0;
 
         buf_wbyte    = rx_byte;
 
         buf_commit   = 1'b0;
         rx_done      = 1'b0;
+		  
+		  echo_req = 1'b0;
 
         // counter defaults (hold)
         len_cnt_n   = len_cnt;
@@ -239,9 +247,13 @@ module rx_fsm #(
 					 	  buf_commit = 1'b1;
 					 	  rx_done    = 1'b1;
 					 end
+					 else if (rx_byte == CMD_ECHO) begin
+						  echo_req   = 1'b1;   
+						  rx_done    = 1'b1;   
+                 end
               end
             end
-
+  
             RECV_FLAGS: begin
                 if (rx_valid) begin
                     buf_flags_we = 1'b1;

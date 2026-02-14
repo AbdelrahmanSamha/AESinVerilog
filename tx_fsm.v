@@ -42,7 +42,9 @@ module tx_fsm #(
     output reg         tx_done,
 	 
     input  wire        sha_done,      
-    input  wire [255:0] sha_result   
+    input  wire [255:0] sha_result,
+
+	 input  wire        echo_tx_start
 	 
 );
 
@@ -67,7 +69,8 @@ module tx_fsm #(
         S_R_ADDR = 3'b001,  // drive addr only (no tx)
         S_R_SEND = 3'b010,  // send 16 bytes from round_rd_data
         S_DATA   = 3'b011,  // send 16 bytes of ciphertext
-		  S_SHA    = 3'b100;   // send 32 bytes of sha_result
+		  S_SHA    = 3'b100,   // send 32 bytes of sha_result
+		  S_ECHO  =  3'b101;
 
     reg [2:0] state, next_state;
 
@@ -227,7 +230,9 @@ module tx_fsm #(
 
         case (state)
             S_IDLE: begin
-                if (aes_done) begin
+				    if (echo_tx_start) 
+							next_state = S_ECHO;
+                else if (aes_done) begin
                     // decide immediately using cmd_in (same cycle as aes_done pulse)
                     if (cmd_in == CMD_BLOCK_LAB) next_state = S_R_ADDR;
                     else                         next_state = S_DATA;
@@ -236,6 +241,10 @@ module tx_fsm #(
 							 next_state = S_SHA;
 					 end
             end
+				
+				S_ECHO: begin
+					if (tx_ready) next_state = S_IDLE;
+				end
 
             S_R_ADDR: begin
                 // address setup cycle; data valid next cycle in S_R_SEND
@@ -292,6 +301,12 @@ module tx_fsm #(
         round_rd_addr = round_idx;
 
         case (state)
+		  
+				S_ECHO: begin
+					tx_valid = 1'b1;
+					tx_byte  = 8'h05;
+				end
+				
             S_R_ADDR: begin
                 // no tx, just address setup
             end
@@ -345,7 +360,10 @@ module tx_fsm #(
 						
 				if ((state == S_SHA) && (next_state == S_IDLE))
 						tx_done = 1'b1;
-			
+						
+			   if ((state == S_ECHO) && (next_state == S_IDLE)) 
+				      tx_done = 1'b1;
+
     end
 
 endmodule
