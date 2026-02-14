@@ -48,6 +48,11 @@ module aes_top #(
 
     genvar i;
 	 
+	 
+	 wire dec_aes_core;
+    assign dec_aes_core = dec && ((mode_sel == 3'd0) || (mode_sel == 3'd2));
+
+	 
     // ------------------------------------------------
     // ECB-specific internal signals
     // ------------------------------------------------
@@ -479,7 +484,7 @@ module aes_top #(
                 .clk           (clk),
                 .rst_n         (rst_n),
                 .start         (cipher_start),
-                .dec           (dec),
+                .dec           (dec_aes_core),
                 .plaintext     (aes_in_block),
                 .roundkey      (roundkey_out),
                 .ciphertext    (aes_raw_out),
@@ -823,7 +828,7 @@ module aes_top #(
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_128),
         .ciphertext    (aes_raw_out_128),
@@ -884,7 +889,7 @@ module aes_top #(
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_192),
         .ciphertext    (aes_raw_out_192),
@@ -945,7 +950,7 @@ module aes_top #(
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_256),
         .ciphertext    (aes_raw_out_256),
@@ -1286,7 +1291,7 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_128),
         .ciphertext    (aes_raw_out_128),
@@ -1347,7 +1352,7 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_192),
         .ciphertext    (aes_raw_out_192),
@@ -1408,7 +1413,7 @@ else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
         .clk           (clk),
         .rst_n         (rst_n),
         .start         (cipher_start_ctrl),
-        .dec           (dec),
+        .dec           (dec_aes_core),
         .plaintext     (aes_in_block_ctrl),
         .roundkey      (roundkey_out_256),
         .ciphertext    (aes_raw_out_256),
