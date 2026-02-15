@@ -158,16 +158,18 @@ module rx_fsm #(
                 if (rx_valid) begin 
 						if (rx_byte == CMD_TRNG)
 							next_state = IDLE;
-						else if (rx_byte == CMD_ECHO)
-							next_state = IDLE;
 						else
                     next_state = RECV_FLAGS;
 					 end
             end
 
             RECV_FLAGS: begin
-                if (rx_valid)
+                if (rx_valid) begin 
+						if (cmd_out == CMD_ECHO)
+								next_state = IDLE;
+						else
                     next_state = RECV_LEN;
+					 end	  
             end
 
             RECV_LEN: begin
@@ -247,16 +249,18 @@ module rx_fsm #(
 					 	  buf_commit = 1'b1;
 					 	  rx_done    = 1'b1;
 					 end
-					 else if (rx_byte == CMD_ECHO) begin
-						  echo_req   = 1'b1;   
-						  rx_done    = 1'b1;   
-                 end
               end
             end
   
             RECV_FLAGS: begin
                 if (rx_valid) begin
                     buf_flags_we = 1'b1;
+						  
+					  if (cmd_out == CMD_ECHO) begin
+						  echo_req   = 1'b1;   
+						  rx_done    = 1'b1;   
+                 end
+					  
                 end
             end
 

@@ -1,7 +1,7 @@
 module aes_uart_top #(
-    parameter integer KEY_SIZE = 128,
+    parameter integer KEY_SIZE = 256,
     parameter integer DOP      = 1,
-    parameter integer MODE     = 0,
+    parameter integer MODE     = 7,
     parameter integer FIXED_VARKEY_MODE = 0 
 )(
     input  wire        clk,
@@ -363,6 +363,7 @@ module aes_uart_top #(
         .aes_result (out_block),
 
         .cmd_in     (cmd_reg),
+        .flags_reg  (flags_reg),
 	
 		  .round_rd_addr(round_rd_addr),
 		  .round_rd_data(round_mem_out),

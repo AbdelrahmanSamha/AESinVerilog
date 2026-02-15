@@ -1,12 +1,11 @@
-module block_encrypt #(
-    parameter integer KEY_SIZE = 128   // 128, 192, 256
-)(
+module block_encrypt (
     input           clk,
     input           rst_n,
     input           start,
     input           dec,
     input  [127:0]  plaintext,
     input  [127:0]  roundkey,
+	 input  [1:0] key_sel,
     output [127:0]  ciphertext,
     output [3:0] key_address,
     output reg      done,
@@ -19,23 +18,23 @@ module block_encrypt #(
     // -------------------------------------------------
     // AES parameters derived from KEY_SIZE
     // -------------------------------------------------
-    localparam integer Nk =
-        (KEY_SIZE == 128) ? 4 :
-        (KEY_SIZE == 192) ? 6 :
-        (KEY_SIZE == 256) ? 8 : 0;
+    wire [3:0] Nk =
+        (key_sel == 2'b00) ? 4'd4 :
+        (key_sel == 2'b01) ? 4'd6 :
+        (key_sel == 2'b10) ? 4'd8 : 4'd0;
 
-    localparam integer Nr =
-        (KEY_SIZE == 128) ? 10 :
-        (KEY_SIZE == 192) ? 12 :
-        (KEY_SIZE == 256) ? 14 : 0;
+    wire [3:0] Nr =
+        (key_sel == 2'b00) ? 4'd10 :
+        (key_sel == 2'b01) ? 4'd12 :
+        (key_sel == 2'b10) ? 4'd14 : 4'd0;
 
-    localparam [3:0] LAST_KEY = Nr[3:0];
+    wire [3:0] LAST_KEY = Nr[3:0];
 
     // -------------------------------------------------
     // FSM state encoding
     // -------------------------------------------------
     localparam IDLE       = 3'b000,
-               SETUP    = 3'b001,
+               SETUP      = 3'b001,
                ITERATE    = 3'b010,
                FINAL      = 3'b011;
 
@@ -106,7 +105,7 @@ module block_encrypt #(
         next_encstate      = encstate;
         final_round_signal = 1'b0;
         next_done          = done;
-	 	  round_mem_we <= 1'b0; 
+	 	  round_mem_we = 1'b0; 
 
 
         case (state)
@@ -121,7 +120,7 @@ module block_encrypt #(
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
 								  
-					 round_mem_we <= 1'b1; 		 
+					 round_mem_we = 1'b1; 		 
             end
 
             ITERATE: begin
@@ -129,14 +128,14 @@ module block_encrypt #(
                 next_round_counter =
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
-					 round_mem_we <= 1'b1; 	
+					 round_mem_we = 1'b1; 	
             end
 
             FINAL: begin
                 final_round_signal = 1'b1;
                 next_encstate = round_encstate;
                 next_done = 1'b1;
-					 round_mem_we <= 1'b1; 	
+					 round_mem_we = 1'b1; 	
             end
         endcase
     end

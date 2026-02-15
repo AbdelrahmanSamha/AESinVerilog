@@ -44,7 +44,8 @@ module tx_fsm #(
     input  wire        sha_done,      
     input  wire [255:0] sha_result,
 
-	 input  wire        echo_tx_start
+	 input  wire        echo_tx_start,
+	 input  wire  [7:0]  flags_reg
 	 
 );
 
@@ -305,7 +306,7 @@ module tx_fsm #(
 		  
 				S_ECHO: begin
 					tx_valid = 1'b1;
-					tx_byte  = 8'h05;
+					tx_byte  = flags_reg;
 				end
 				
             S_R_ADDR: begin
