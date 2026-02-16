@@ -1,6 +1,6 @@
 module uart_tx #(
     parameter CLK_FREQ = 50_000_000,
-    parameter BAUD     = 921600
+    parameter BAUD     = 115200
 )(
     input  wire clk,
     input  wire reset,       // ACTIVE-low ASYNC RESET

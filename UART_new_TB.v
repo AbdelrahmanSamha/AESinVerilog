@@ -13,9 +13,9 @@ module UART_new_TB;
 
     // ---------------- Instantiate DUT ----------------
     aes_uart_top #(
-        .KEY_SIZE (128),
+        .KEY_SIZE (256),
         .DOP      (1),
-        .MODE     (0),
+        .MODE     (7),
 		  .FIXED_VARKEY_MODE(0)
     ) dut (
         .clk     (clk),
@@ -146,7 +146,7 @@ module UART_new_TB;
                 uart_receive_byte(rx_byte);
 
                 rx_block[rx_count] = rx_byte;
-               // $display("RX[%0d] = %02x", rx_count, rx_byte);
+                $display("RX[%0d] = %02x", rx_count, rx_byte);
 
                 rx_count = rx_count + 1;
 
@@ -207,42 +207,46 @@ module UART_new_TB;
 		  $display("---- UART AES TEST ----");
 
         // ---------------- Header ----------------
-        uart_send_byte(8'h03); // cmd
+        uart_send_byte(8'h05); // cmd
 		  #200;
 		  uart_rx = 1'b1;
-        uart_send_byte(8'b000000000); // flags
+		  
+        uart_send_byte(8'b10101010); // flags
 		  #200;
 		  uart_rx = 1'b1;
-        uart_send_byte(8'h01); // length = 32 bytes (2 blocks)
+		  /*
+        uart_send_byte(8'h05); // length = 32 bytes (2 blocks)
 		  #200
 		  uart_rx = 1'b1;	
+		  
         // ---------------- Key ----------------
-     //   send_block_128(128'h2B7E151628AED2A6ABF7158809CF4F3C);
+       send_key_256(256'h2B7E151628AED2A6ABF7158809CF4F3C);
        // send_key_192(192'h8E73B0F7DA0E6452C810F32B809079E562F8EAD2522C6B7B);
 		 
-      //send_key_256(256'h603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4);
-		//	uart_rx = 1'b1;
+     //  send_key_256(256'h603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4);
+			uart_rx = 1'b1;
         // ---------------- Block 1 ----------------
-       // send_block_128(128'h000102030405060708090A0B0C0D0E0F); // iv 
-        //send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
-			//uart_rx = 1'b1;
+       //send_block_128(128'h000102030405060708090A0B0C0D0E0F); // iv 
+       //send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
+		//	uart_rx = 1'b1;
         // ---------------- Block 2 ----------------
-        send_block_128(128'h61626380000000000000000000000000);
+   /*     send_block_128(128'h6BC1BEE22E409F96E93D7E117393172A);
 			uart_rx = 1'b1;
         // ---------------- Block 3 ----------------
-        send_block_128(128'h00000000000000000000000000000000);
+        send_block_128(128'hAE2D8A571E03AC9C9EB76FAC45AF8E51);
 			uart_rx = 1'b1;
         // ---------------- Block 4 ----------------
-        send_block_128(128'h00000000000000000000000000000000);
+        send_block_128(128'h30C81C46A35CE411E5FBC1191A0A52EF);
 			uart_rx = 1'b1;
         // ---------------- Block 5 ----------------
-			send_block_128(128'h00000000000000000000000000000018);
+			send_block_128(128'hF69F2445DF4F9B17AD2B417BE66C3710);
 			uart_rx = 1'b1;
         // ---------------- Block 6 ----------------
-        //send_block_128(128'h10101010101010101010101010101010);
-		//	uart_rx = 1'b1;
+        send_block_128(128'h10101010101010101010101010101010);
+			uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
-        receive_blocks(2);
+		  */
+        receive_blocks(1);
 
 /*
  		$display("---- UART AES TEST ----");
@@ -254,18 +258,19 @@ module UART_new_TB;
         uart_send_byte(8'b00001000); // CMD
 		  #200;
 		  uart_rx = 1'b1;
-        uart_send_byte(8'h50); // length = 32 bytes (2 blocks)
+        uart_send_byte(8'h01); // length = 32 bytes (2 blocks)
 		  #200
 		  uart_rx = 1'b1;	
         // ---------------- Key ----------------
-        send_block_128(128'h2B7E151628AED2A6ABF7158809CF4F3C);
-	  	  uart_rx = 1'b1;
+      //  send_key_256(256'h2B7E151628AED2A6ABF7158809CF4F3C);
+	  	//  uart_rx = 1'b1;
         // ---------------- Block 1 ----------------
        // send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
 		//	uart_rx = 1'b1;
         // ---------------- Block 2 ----------------
-        send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
-			uart_rx = 1'b1;
+     //   send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
+		//	uart_rx = 1'b1;
+			/*
         // ---------------- Block 3 ----------------
         send_block_128(128'hf5d3d58503b9699de785895a96fdbaaf);
 			uart_rx = 1'b1;
@@ -279,9 +284,10 @@ module UART_new_TB;
         send_block_128(128'hdaa0af074bd8083c8a32d4fc563c55cc);
 			uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
-        receive_blocks(5);
-*/
-//#1000000000;
+	
+        receive_blocks(1);
+		  */
+#1000000;
         $stop;
     end
 
