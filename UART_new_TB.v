@@ -290,6 +290,7 @@ module UART_new_TB;
 	*/
         receive_blocks(2);
 		  
+		  #1000000;
 		  
  		$display("---- UART AES TEST ----");
 
@@ -330,9 +331,9 @@ module UART_new_TB;
 			//uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
 	*/
-        receive_blocks(2);
+        receive_blocks(4);
 		  
-//#1000000;
+
         $stop;
     end
 

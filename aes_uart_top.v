@@ -487,7 +487,7 @@ module aes_uart_top #(
 	ECDH u_ecdh(
         .clk(clk),
         .rst_n(rst_n),
-        .start(sha_ready),
+        .start(dh_start),
         .scalar(sha_block_reg[511:256]),//256bits
         .u_coordinate(sha_block_reg[255:0]),//256bits
         .result(dh_result),//256bits

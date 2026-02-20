@@ -325,8 +325,10 @@ module core_fsm #(
         if (!block_ready)
             blk_sent_n = 1'b0;
 				
-		  if (!sha_ready)
+		  if (!sha_ready) begin 
 			   sha_sent_n = 1'b0;
+			   dh_sent_n = 1'b0;		
+			end
 		
         if (tx_done)
             got_tx_done_n = 1'b1;
@@ -387,10 +389,8 @@ module core_fsm #(
 						 key_sent_n     = 1'b0;
 						 sha_sent_n     = 1'b0;
 					 end
-					 if (hdr_done && cmd_is_dh && !dh_sent) begin
-						dh_start      = 1'b1;   
-					   dh_sent_n     = 1'b1;
-							 
+					 if (hdr_done && cmd_is_dh) begin
+					   dh_sent_n     = 1'b0;
 						got_cmd_n     = 1'b0;
 						got_flags_n   = 1'b0;
 						got_len_n     = 1'b0;
@@ -420,6 +420,14 @@ module core_fsm #(
 					if (sha_ready && !sha_sent) begin
 						sha_valid_data = 1'b1;  // 1-cycle pulse to SHA top
 						sha_sent_n     = 1'b1;
+					end
+				end
+				
+				S_DH_WAIT: begin
+				
+					if (sha_ready && !dh_sent) begin // same as sha same reg in buffer so same signals 
+						dh_start      = 1'b1;   
+					   dh_sent_n     = 1'b1;
 					end
 				end
 
