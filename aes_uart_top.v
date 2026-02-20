@@ -468,4 +468,16 @@ module aes_uart_top #(
         .tx_ready(tx_ready)          
     );
 
+	ECDH u_ecdh(
+        .clk(clk),
+        .rst_n(rst_n),
+        .start(),
+        .scalar(),//256bits
+        .u_coordinate(),//256bits
+        .result(),//256bits
+        .done(ecdh_done)
+    );
+
+	 
+	 
 endmodule
