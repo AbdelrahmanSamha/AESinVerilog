@@ -28,7 +28,7 @@ module UART_new_TB;
 
     // ---------------- UART PARAMETERS ----------------
     parameter CLK_FREQ = 50_000_000;
-    parameter BAUD     = 115200;
+    parameter BAUD     = 921600;
     parameter BIT_TIME = 1_000_000_000 / BAUD; // ns
 
     // ---------------- RX storage ----------------
@@ -263,13 +263,15 @@ module UART_new_TB;
 		  uart_rx = 1'b1;	
 		  */
         // ---------------- Key ----------------
-      //  send_key_256(256'h2B7E151628AED2A6ABF7158809CF4F3C);
-	   //	  uart_rx = 1'b1;
+        send_key_256(256'd7);
+	   	  uart_rx = 1'b1;
+		  send_key_256(256'd9);
+	   	  uart_rx = 1'b1;
         // ---------------- Block 1 ----------------
        // send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
 		//	uart_rx = 1'b1;
         // ---------------- Block 2 ----------------
-        send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
+   /*     send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
 			uart_rx = 1'b1;
 			
         // ---------------- Block 3 ----------------
@@ -285,8 +287,8 @@ module UART_new_TB;
       //  send_block_128(128'ha254be88e037ddd9d79fb6411c3f9df8);
 			//uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
-	
-        receive_blocks(5);
+	*/
+        receive_blocks(2);
 		  
 //#1000000;
         $stop;

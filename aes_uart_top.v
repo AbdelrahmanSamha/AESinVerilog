@@ -140,7 +140,10 @@ module aes_uart_top #(
 	 wire [255:0] trng_data;
 	 
 	 wire [255:0] sha_trng_result;
+	 wire [255:0] sha_trng_dh_result;
+	 wire [255:0] dh_result;
 	 wire sha_trng_done;
+	 wire sha_trng_dh_done;
 	 wire is_trng_cmd;
 	 
     wire echo_req;
@@ -244,8 +247,8 @@ module aes_uart_top #(
 
 		  .sha_we        (sha_dh_we),
 
-		  .sha_out_we    (sha_trng_done),
-		  .sha_out_hash  (sha_trng_result),
+		  .sha_out_we    (sha_trng_dh_done),
+		  .sha_out_hash  (sha_trng_dh_result),
 		  
 		  .sha_block_reg (sha_block_reg),
 		  .sha_ready     (sha_ready),
@@ -437,12 +440,25 @@ module aes_uart_top #(
 			.out (sha_trng_result)
 		);
 		
+		mux2to1 #(.WIDTH(256)) u_mux_sha_trng_dh_data (
+			.in0 (sha_trng_result),    // SHA path
+			.in1 (dh_result),   // TRNG path
+			.sel (cmd_is_dh),
+			.out (sha_trng_dh_result)
+		);
 		
 		mux2to1 #(.WIDTH(1)) u_mux_sha_trng_valid (
 			.in0 (sha_out_we),   // SHA done pulse
 			.in1 (trng_done),  // TRNG done pulse
 			.sel (is_trng_cmd),
 			.out (sha_trng_done)
+		);
+		
+	  mux2to1 #(.WIDTH(1)) u_mux_sha_trng_dh_valid (
+			.in0 (sha_trng_done),   // SHA done pulse
+			.in1 (dh_done),  // TRNG done pulse
+			.sel (cmd_is_dh),
+			.out (sha_trng_dh_done)
 		);
 		
     // ============================================================
@@ -471,13 +487,11 @@ module aes_uart_top #(
 	ECDH u_ecdh(
         .clk(clk),
         .rst_n(rst_n),
-        .start(),
-        .scalar(),//256bits
-        .u_coordinate(),//256bits
-        .result(),//256bits
-        .done(ecdh_done)
+        .start(sha_ready),
+        .scalar(sha_block_reg[511:256]),//256bits
+        .u_coordinate(sha_block_reg[255:0]),//256bits
+        .result(dh_result),//256bits
+        .done(dh_done)
     );
 
-	 
-	 
 endmodule
