@@ -1,4 +1,5 @@
 module round_dec (
+	 input clk,
     input  wire [127:0] state_in,
     input  wire [127:0] round_key,
     input  wire         final_round,
@@ -9,7 +10,7 @@ module round_dec (
     
     // Decryption: InvShiftRows → InvSubBytes → AddRoundKey → InvMixColumns
     inv_shiftrows  u_ishift  (.in(state_in), .out(ishift));
-    inv_subbytes   u_isub    (.in(ishift),   .out(isub));
+    inv_subbytes   u_isub    (.in(ishift),   .out(isub), .clk(clk));
     
     // AddRoundKey
     aes_addroundkey u_add (

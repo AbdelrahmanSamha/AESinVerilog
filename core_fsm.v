@@ -45,7 +45,11 @@ module core_fsm #(
 	 output wire cmd_is_trng,
 	 
 	 input  wire echo_req,
-	 output reg echo_tx_start
+	 output reg echo_tx_start,
+	 
+	 output reg  dh_start,   
+    input  wire dh_done,
+    output cmd_is_dh	 
 	
 );
 
@@ -64,6 +68,9 @@ module core_fsm #(
 	 
 	 localparam [7:0] CMD_TRNG = 8'h04;
 	 assign cmd_is_trng = (cmd_reg == CMD_TRNG);
+	 
+	 localparam [7:0] CMD_DH = 8'h06;
+	 assign cmd_is_dh = (cmd_reg == CMD_DH);
 
     wire iv_needed ;
 	 assign iv_needed = !((MODE == ECB_MODE) || (MODE == VAR_MODES && mode_sel == 3'b000)
@@ -84,7 +91,8 @@ module core_fsm #(
 		  S_TRNG_WAIT    = 4'b0111,
 		  S_TRNG_WAIT_TX = 4'b1000,
 		  S_ECHO_START   = 4'b1001,
-        S_ECHO_WAIT_TX = 4'b1010;
+        S_ECHO_WAIT_TX = 4'b1010,
+		  S_DH_WAIT      = 4'b1011;
 		  
     reg [3:0] state, next_state;
 
@@ -99,7 +107,7 @@ module core_fsm #(
 
     wire hdr_done_aes_sha  = got_cmd & got_flags & got_len;
 	 wire hdr_done_trng    =  got_cmd;               
-	 wire hdr_done         =  cmd_is_trng ? hdr_done_trng : hdr_done_aes_sha;
+	 wire hdr_done         =  (cmd_is_trng || cmd_is_dh) ? hdr_done_trng : hdr_done_aes_sha;
 	 
     wire cmd_is_aes = (cmd_reg == CMD_AES) || (cmd_reg == BLOCK_LAB);
 
@@ -110,6 +118,7 @@ module core_fsm #(
     reg key_sent, key_sent_n;
     reg got_tx_done, got_tx_done_n;
 	 reg sha_sent, sha_sent_n;
+	 reg dh_sent, dh_sent_n;
 
     // ============================================================
     // block counting (based on length_reg bytes)
@@ -144,7 +153,8 @@ module core_fsm #(
             blocks_total <= 32'd0;
             block_index  <= 32'd0;
             got_tx_done  <= 1'b0;
-				trng_round <= 1'b0;
+				trng_round   <= 1'b0;
+				dh_sent      <= 1'b0;
 				
         end else begin
             state        <= next_state;
@@ -157,6 +167,8 @@ module core_fsm #(
             key_sent     <= key_sent_n;
 				sha_sent     <= sha_sent_n;
 				trng_round   <= trng_round_n;
+				dh_sent      <= dh_sent_n;
+				
 
 
             blocks_total <= blocks_total_n;
@@ -187,6 +199,8 @@ module core_fsm #(
 						 next_state = S_SHA_WAIT;
 					 else if (hdr_done && cmd_is_trng)
 					    next_state = S_TRNG_START;
+					 else if (hdr_done && cmd_is_dh)
+                   next_state = S_DH_WAIT;
 				end
 
 				S_ECHO_START:   next_state = S_ECHO_WAIT_TX;
@@ -194,6 +208,13 @@ module core_fsm #(
 				S_ECHO_WAIT_TX: begin
 					if (got_tx_done)
 						next_state = S_DONE;
+				end
+				
+				S_DH_WAIT: begin
+					if (dh_done)
+						next_state = S_WAIT_TX;    
+					else
+						next_state = S_DH_WAIT;
 				end
 				
 				S_TRNG_START:   next_state = S_TRNG_WAIT;
@@ -261,6 +282,7 @@ module core_fsm #(
 		  sha_valid_data     = 1'b0;
 		  trng_start         = 1'b0;
 		  echo_tx_start      = 1'b0;
+		  dh_start           = 1'b0;
 
 
         // hold regs by default
@@ -272,6 +294,7 @@ module core_fsm #(
         key_sent_n     = key_sent;
 		  sha_sent_n     = sha_sent;
 		  trng_round_n   = trng_round;
+		  dh_sent_n      = dh_sent;
 
         blocks_total_n = blocks_total;
         block_index_n  = block_index;
@@ -326,6 +349,7 @@ module core_fsm #(
                     got_len_n   = 1'b0;
                     got_tx_done_n = 1'b0;
 						  block_index_n = 32'd0;
+						  dh_sent_n = 1'b0;
                 end
 					 
 					 if (hdr_done && cmd_is_sha) begin
@@ -340,7 +364,7 @@ module core_fsm #(
 						
 					 end
 			
-					 if (hdr_done && !(cmd_is_aes || cmd_is_sha || cmd_is_trng)) begin
+					 if (hdr_done && !(cmd_is_aes || cmd_is_sha || cmd_is_trng || cmd_is_dh)) begin
 						 got_cmd_n   = 1'b0;
 						 got_flags_n = 1'b0;
 						 got_len_n   = 1'b0;
@@ -363,6 +387,15 @@ module core_fsm #(
 						 key_sent_n     = 1'b0;
 						 sha_sent_n     = 1'b0;
 					 end
+					 if (hdr_done && cmd_is_dh && !dh_sent) begin
+						dh_start      = 1'b1;   
+					   dh_sent_n     = 1'b1;
+							 
+						got_cmd_n     = 1'b0;
+						got_flags_n   = 1'b0;
+						got_len_n     = 1'b0;
+						got_tx_done_n = 1'b0;
+					end
             end
 
 				S_ECHO_START: begin

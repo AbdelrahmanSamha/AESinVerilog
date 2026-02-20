@@ -36,7 +36,9 @@ module block_encrypt (
     localparam IDLE       = 3'b000,
                SETUP      = 3'b001,
                ITERATE    = 3'b010,
-               FINAL      = 3'b011;
+					WAIT       = 3'b011,
+               FINAL      = 3'b100,
+               DONE       = 3'b101;
 
     reg [2:0]   state, next_state;
     reg [3:0]   next_round_counter;
@@ -86,13 +88,20 @@ module block_encrypt (
                 next_state = ITERATE;
 
             ITERATE: begin
-                if (last_round_signal)
+						  next_state = WAIT;
+            end
+				
+				WAIT: begin 
+			       if (last_round_signal)
                     next_state = FINAL;
 					 else 
-						  next_state = ITERATE;
-            end
+					 next_state = ITERATE;
+				end
 
             FINAL:
+                next_state = DONE;
+					 
+			   DONE : 
                 next_state = IDLE;
         endcase
     end
@@ -124,19 +133,26 @@ module block_encrypt (
             end
 
             ITERATE: begin
-                next_encstate = round_encstate;
+	
+            end
+				
+				WAIT:begin 
+				    next_encstate = round_encstate;
+					 round_mem_we = 1'b1; 
                 next_round_counter =
                     dec ? round_counter - 4'd1 :
                           round_counter + 4'd1;
-					 round_mem_we = 1'b1; 	
-            end
+				end
 
             FINAL: begin
+            end
+				
+				DONE : begin
                 final_round_signal = 1'b1;
                 next_encstate = round_encstate;
-                next_done = 1'b1;
 					 round_mem_we = 1'b1; 	
-            end
+                next_done = 1'b1;
+				end
         endcase
     end
 
@@ -145,6 +161,7 @@ module block_encrypt (
     // AES round function (combinational)
     // -------------------------------------------------
     aes_round round_trans (
+	     .clk(clk),
         .state_in(encstate),
         .round_key(roundkey),
         .final_round(final_round_signal),

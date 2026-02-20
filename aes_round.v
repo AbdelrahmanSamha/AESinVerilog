@@ -1,4 +1,5 @@
 module aes_round (
+	 input clk,
     input  wire [127:0] state_in,
     input  wire [127:0] round_key,
     input  wire         final_round,
@@ -9,6 +10,7 @@ module aes_round (
     
     // Encryption path: SubBytes → ShiftRows → MixColumns → AddRoundKey
     round_enc u_enc_round (
+	     .clk(clk),
         .state_in(state_in),
         .round_key(round_key),
         .final_round(final_round),
@@ -17,6 +19,7 @@ module aes_round (
     
     // Decryption path: InvShiftRows → InvSubBytes → AddRoundKey → InvMixColumns
     round_dec u_dec_round (
+	     .clk(clk),
         .state_in(state_in),
         .round_key(round_key),
         .final_round(final_round),

@@ -1,54 +1,49 @@
 module subbytes(
-    input  [127:0] in,
-    output [127:0] out
+    input              clk,          // NEW
+    input  [127:0]     in,
+    output [127:0]     out
 );
 
-    // Instance 0: bits [7:0]
-    sbox s0 (.in(in[7:0]),    .out(out[7:0]));
-    
-    // Instance 1: bits [15:8]
-    sbox s1 (.in(in[15:8]),   .out(out[15:8]));
-    
-    // Instance 2: bits [23:16]
-    sbox s2 (.in(in[23:16]),  .out(out[23:16]));
-    
-    // Instance 3: bits [31:24]
-    sbox s3 (.in(in[31:24]),  .out(out[31:24]));
-    
-    // Instance 4: bits [39:32]
-    sbox s4 (.in(in[39:32]),  .out(out[39:32]));
-    
-    // Instance 5: bits [47:40]
-    sbox s5 (.in(in[47:40]),  .out(out[47:40]));
-    
-    // Instance 6: bits [55:48]
-    sbox s6 (.in(in[55:48]),  .out(out[55:48]));
-    
-    // Instance 7: bits [63:56]
-    sbox s7 (.in(in[63:56]),  .out(out[63:56]));
-    
-    // Instance 8: bits [71:64]
-    sbox s8 (.in(in[71:64]),  .out(out[71:64]));
-    
-    // Instance 9: bits [79:72]
-    sbox s9 (.in(in[79:72]),  .out(out[79:72]));
-    
-    // Instance 10: bits [87:80]
-    sbox s10 (.in(in[87:80]), .out(out[87:80]));
-    
-    // Instance 11: bits [95:88]
-    sbox s11 (.in(in[95:88]), .out(out[95:88]));
-    
-    // Instance 12: bits [103:96]
-    sbox s12 (.in(in[103:96]), .out(out[103:96]));
-    
-    // Instance 13: bits [111:104]
-    sbox s13 (.in(in[111:104]), .out(out[111:104]));
-    
-    // Instance 14: bits [119:112]
-    sbox s14 (.in(in[119:112]), .out(out[119:112]));
-    
-    // Instance 15: bits [127:120]
-    sbox s15 (.in(in[127:120]), .out(out[127:120]));
+    // -------------------------------------------------
+    // 16 independent ROM outputs
+    // -------------------------------------------------
+    wire [7:0] q0,  q1,  q2,  q3;
+    wire [7:0] q4,  q5,  q6,  q7;
+    wire [7:0] q8,  q9,  q10, q11;
+    wire [7:0] q12, q13, q14, q15;
+
+    // -------------------------------------------------
+    // 16 S-Box ROM instances (parallel)
+    // -------------------------------------------------
+
+    s_box_rom s0  (.address(in[7:0]),    .clock(clk), .q(q0));
+    s_box_rom s1  (.address(in[15:8]),   .clock(clk), .q(q1));
+    s_box_rom s2  (.address(in[23:16]),  .clock(clk), .q(q2));
+    s_box_rom s3  (.address(in[31:24]),  .clock(clk), .q(q3));
+
+    s_box_rom s4  (.address(in[39:32]),  .clock(clk), .q(q4));
+    s_box_rom s5  (.address(in[47:40]),  .clock(clk), .q(q5));
+    s_box_rom s6  (.address(in[55:48]),  .clock(clk), .q(q6));
+    s_box_rom s7  (.address(in[63:56]),  .clock(clk), .q(q7));
+
+    s_box_rom s8  (.address(in[71:64]),  .clock(clk), .q(q8));
+    s_box_rom s9  (.address(in[79:72]),  .clock(clk), .q(q9));
+    s_box_rom s10 (.address(in[87:80]),  .clock(clk), .q(q10));
+    s_box_rom s11 (.address(in[95:88]),  .clock(clk), .q(q11));
+
+    s_box_rom s12 (.address(in[103:96]), .clock(clk), .q(q12));
+    s_box_rom s13 (.address(in[111:104]),.clock(clk), .q(q13));
+    s_box_rom s14 (.address(in[119:112]),.clock(clk), .q(q14));
+    s_box_rom s15 (.address(in[127:120]),.clock(clk), .q(q15));
+
+    // -------------------------------------------------
+    // Reassemble 128-bit output
+    // -------------------------------------------------
+    assign out = {
+        q15, q14, q13, q12,
+        q11, q10, q9,  q8,
+        q7,  q6,  q5,  q4,
+        q3,  q2,  q1,  q0
+    };
 
 endmodule

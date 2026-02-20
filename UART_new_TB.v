@@ -203,18 +203,18 @@ module UART_new_TB;
 
         uart_rx = 1'b1;
 */
-      // ---------------- IV ----------------
+    /*  // ---------------- IV ----------------
 		  $display("---- UART AES TEST ----");
 
         // ---------------- Header ----------------
-        uart_send_byte(8'h05); // cmd
+        uart_send_byte(8'h01); // cmd
 		  #200;
 		  uart_rx = 1'b1;
 		  
-        uart_send_byte(8'b10101010); // flags
+        uart_send_byte(8'b00000000); // flags
 		  #200;
 		  uart_rx = 1'b1;
-		  /*
+		  
         uart_send_byte(8'h05); // length = 32 bytes (2 blocks)
 		  #200
 		  uart_rx = 1'b1;	
@@ -230,9 +230,9 @@ module UART_new_TB;
        //send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
 		//	uart_rx = 1'b1;
         // ---------------- Block 2 ----------------
-   /*     send_block_128(128'h6BC1BEE22E409F96E93D7E117393172A);
+        send_block_128(128'h6BC1BEE22E409F96E93D7E117393172A);
 			uart_rx = 1'b1;
-        // ---------------- Block 3 ----------------
+       // ---------------- Block 3 ----------------
         send_block_128(128'hAE2D8A571E03AC9C9EB76FAC45AF8E51);
 			uart_rx = 1'b1;
         // ---------------- Block 4 ----------------
@@ -245,49 +245,50 @@ module UART_new_TB;
         send_block_128(128'h10101010101010101010101010101010);
 			uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
-		  */
-        receive_blocks(1);
+	 
+        receive_blocks(5);
 
-/*
+*/
  		$display("---- UART AES TEST ----");
 
         // ---------------- Header ----------------
-        uart_send_byte(8'h01); // SOF
+        uart_send_byte(8'h06); // CMD
 		  #200;
 		  uart_rx = 1'b1;
-        uart_send_byte(8'b00001000); // CMD
+       /* uart_send_byte(8'b00001000); // FLAGS
 		  #200;
 		  uart_rx = 1'b1;
-        uart_send_byte(8'h01); // length = 32 bytes (2 blocks)
+        uart_send_byte(8'h05); // length = 32 bytes (2 blocks)
 		  #200
 		  uart_rx = 1'b1;	
+		  */
         // ---------------- Key ----------------
       //  send_key_256(256'h2B7E151628AED2A6ABF7158809CF4F3C);
-	  	//  uart_rx = 1'b1;
+	   //	  uart_rx = 1'b1;
         // ---------------- Block 1 ----------------
        // send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
 		//	uart_rx = 1'b1;
         // ---------------- Block 2 ----------------
-     //   send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
-		//	uart_rx = 1'b1;
-			/*
+        send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
+			uart_rx = 1'b1;
+			
         // ---------------- Block 3 ----------------
         send_block_128(128'hf5d3d58503b9699de785895a96fdbaaf);
 			uart_rx = 1'b1;
         // ---------------- Block 4 ----------------
-        send_block_128(128'hef7afd2270e2e60adce0ba2face6444e);
+        send_block_128(128'h43b1cd7f598ece23881b00e3ed030688);
 			uart_rx = 1'b1;
         // ---------------- Block 5 ----------------
-			send_block_128(128'h9a4b41ba738d6c72fb16691603c18e0e);
+			send_block_128(128'h7b0c785e27e8ad3f8223207104725dd4);
 			uart_rx = 1'b1;
         // ---------------- Block 6 ----------------
-        send_block_128(128'hdaa0af074bd8083c8a32d4fc563c55cc);
-			uart_rx = 1'b1;
+      //  send_block_128(128'ha254be88e037ddd9d79fb6411c3f9df8);
+			//uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
 	
-        receive_blocks(1);
-		  */
-#1000000;
+        receive_blocks(5);
+		  
+//#1000000;
         $stop;
     end
 

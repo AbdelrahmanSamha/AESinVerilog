@@ -55,6 +55,8 @@ module tx_fsm #(
     localparam [7:0]  CMD_BLOCK_LAB = 8'h02;
 	 localparam [7:0]  CMD_SHA       = 8'h03;
 	 localparam [7:0]  CMD_TRNG      = 8'h04;
+	 localparam [7:0]  CMD_DH        = 8'h06;
+
 
     localparam integer Nr =
         (KEY_SIZE == 128) ? 10 :
@@ -239,7 +241,7 @@ module tx_fsm #(
                     if (cmd_in == CMD_BLOCK_LAB) next_state = S_R_ADDR;
                     else                         next_state = S_DATA;
                 end
-					 else if (sha_done && ((cmd_in == CMD_SHA) || (cmd_in == CMD_TRNG))) begin
+					 else if (sha_done && ((cmd_in == CMD_SHA) || (cmd_in == CMD_TRNG) || (cmd_in == CMD_DH))) begin
 							 next_state = S_SHA;
 					 end
             end

@@ -145,7 +145,14 @@ module aes_uart_top #(
 	 
     wire echo_req;
 	 wire echo_tx_start;
-
+	 wire buf_dh_we;
+	 
+	 wire dh_start;
+	 wire dh_done;
+	 wire cmd_is_dh;
+	 wire sha_dh_we;
+	 
+    assign sha_dh_we = buf_sha_we | buf_dh_we;
 
     // ============================================================
     // RX FSM
@@ -184,9 +191,11 @@ module aes_uart_top #(
 		  
 		  .mode_sel(mode_sel),
 		  
-		  .echo_req(echo_req)
+		  .echo_req(echo_req),
+		  .buf_dh_we(buf_dh_we)
+		  
     );
-
+			
     // ============================================================
     // AES BYTE BUFFER
     // ============================================================
@@ -233,7 +242,7 @@ module aes_uart_top #(
         .block_ready  (block_ready),
         .out_block_valid  (out_block_valid),
 
-		  .sha_we        (buf_sha_we),
+		  .sha_we        (sha_dh_we),
 
 		  .sha_out_we    (sha_trng_done),
 		  .sha_out_hash  (sha_trng_result),
@@ -291,7 +300,11 @@ module aes_uart_top #(
 		  .cmd_is_trng   (is_trng_cmd),
 		  
 		  .echo_req      (echo_req),
-		  .echo_tx_start (echo_tx_start)
+		  .echo_tx_start (echo_tx_start),
+		  
+		  .dh_start (dh_start),
+		  .dh_done (dh_done),
+		  .cmd_is_dh (cmd_is_dh)
 
     );
 

@@ -32,7 +32,8 @@ module rx_fsm #(
     output reg         buf_commit,
     output reg         rx_done,
 	 
-	 output reg  echo_req 
+	 output reg         echo_req,
+	 output reg         buf_dh_we
 );
 
     // ----------------------------
@@ -53,6 +54,9 @@ module rx_fsm #(
 	 localparam [7:0] CMD_TRNG = 8'h04;
 	 
 	 localparam [7:0] CMD_ECHO = 8'h05;   // test: echo this byte back
+	 
+	 localparam [7:0] CMD_DH = 8'h06; // Diffie-Hellman
+    wire is_dh_cmd = (cmd_out == CMD_DH);
 
     wire iv_needed;
 	 assign iv_needed = !((MODE == ECB) || (MODE == VAR_MODES && mode_sel == 3'b000)
@@ -136,12 +140,13 @@ module rx_fsm #(
             // reset data address at start of data receive
             if ((curr_state == RECV_IV  && next_state == RECV_DATA) ||
                 (curr_state == RECV_KEY && next_state == RECV_DATA) ||
-					 (curr_state == RECV_LEN && next_state == RECV_DATA)) begin
+					 (curr_state == RECV_LEN && next_state == RECV_DATA) ||
+					 (curr_state == IDLE     && next_state == RECV_DATA)) begin
                 buf_data_addr <= 32'd0;
             end
 
             // increment data addr on each data byte written
-            if (buf_data_we || buf_sha_we) begin
+            if (buf_data_we || buf_sha_we || buf_dh_we) begin
                 buf_data_addr <= buf_data_addr + 32'd1;
             end
         end
@@ -158,6 +163,8 @@ module rx_fsm #(
                 if (rx_valid) begin 
 						if (rx_byte == CMD_TRNG)
 							next_state = IDLE;
+						else if (rx_byte == CMD_DH)
+			    			next_state = RECV_DATA;
 						else
                     next_state = RECV_FLAGS;
 					 end
@@ -217,13 +224,14 @@ module rx_fsm #(
         buf_iv_we    = 1'b0;
         buf_data_we  = 1'b0;
         buf_sha_we   = 1'b0;
+        buf_dh_we   = 1'b0;
 
         buf_wbyte    = rx_byte;
 
         buf_commit   = 1'b0;
         rx_done      = 1'b0;
 		  
-		  echo_req = 1'b0;
+		  echo_req = 1'b0;	  
 
         // counter defaults (hold)
         len_cnt_n   = len_cnt;
@@ -243,11 +251,15 @@ module rx_fsm #(
 
                     key_cnt_n  = KEY_BYTES[7:0];
                     iv_cnt_n   = 5'd16;
-                    data_cnt_n = 38'd0; // will be loaded after LEN done
+						  
+						  if (rx_byte == CMD_DH)
+                       data_cnt_n = 38'd64;
+						  else 
+                       data_cnt_n = 38'd0; // will be loaded after LEN done
 					
-					 if (rx_byte == CMD_TRNG) begin
-					 	  buf_commit = 1'b1;
-					 	  rx_done    = 1'b1;
+						  if (rx_byte == CMD_TRNG) begin
+							  buf_commit = 1'b1;
+					 	     rx_done    = 1'b1;
 					 end
               end
             end
@@ -276,7 +288,7 @@ module rx_fsm #(
 
                     // load DATA byte counter at end of LEN
 						  if (len_cnt == (len_bytes - 3'd1)) begin
-						   	if (is_sha_cmd)
+								if (is_sha_cmd)
 						   		data_cnt_n = ({len_acc[23:0], rx_byte, 6'b0}); // SHA blocks * 64 bytes
 						   	else
 						   		data_cnt_n = ({len_acc[23:0], rx_byte, 4'b0}); // AES blocks * 16 bytes
@@ -302,7 +314,9 @@ module rx_fsm #(
                 if (rx_valid) begin
 						  if (is_sha_cmd) 
 								buf_sha_we = 1'b1;
-						  else
+						  else if (is_dh_cmd)
+                        buf_dh_we   = 1'b1; 
+						  else 
 								buf_data_we = 1'b1;
 						  
                     data_cnt_n  = data_cnt - 38'd1;

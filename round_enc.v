@@ -1,4 +1,5 @@
 module round_enc (
+	 input clk,
     input  wire [127:0] state_in,
     input  wire [127:0] round_key,
     input  wire         final_round,
@@ -8,7 +9,7 @@ module round_enc (
     wire [127:0] add_input;
     
     // Encryption: SubBytes → ShiftRows → MixColumns → AddRoundKey
-    subbytes       u_sub     (.in(state_in), .out(sub));
+    subbytes       u_sub     (.in(state_in), .out(sub), .clk(clk));
     aes_shiftrows  u_shift   (.in(sub),      .out(shift));
     aes_mixcolumns u_mix     (.in(shift),    .out(mix));
     
