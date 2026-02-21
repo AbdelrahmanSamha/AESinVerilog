@@ -1,7 +1,7 @@
 module aes_top #(
     parameter integer KEY_SIZE  = 256,
     parameter integer DOP       = 1,
-    parameter integer MODE      = 7,
+    parameter integer MODE      = 0,
     parameter integer FIXED_VARKEY_MODE = 0 
 )(
     input                     clk,
@@ -33,18 +33,17 @@ module aes_top #(
 	 output [127:0] next_encstate_out,
 	 output  [3:0]   round_counter_out,
 	 output round_mem_we
-	 
-	 
+	  
 );
 
     localparam integer ECB_MODE = 0;
     localparam integer CTR_MODE = 1;
     localparam integer CBC_MODE = 2;
     localparam integer CFB_MODE = 3;
-    localparam integer OFB_MODE = 4; // modes form  0 to 4 (6000-10000) logical elements
-    localparam integer VAR_MODES_MODE = 5;  // 11,992 logical element 
-    localparam integer VAR_KEYS_MODE = 6;  // 29,396  logical element 
-	 localparam integer VAR_FULL_MODE = 7;  // 31,035  logical element 
+    localparam integer OFB_MODE = 4; 
+    localparam integer VAR_MODES_MODE = 5;  
+    localparam integer VAR_KEYS_MODE = 6;  
+	 localparam integer VAR_FULL_MODE = 7; 
 
     genvar i;
 	 
@@ -66,7 +65,7 @@ module aes_top #(
     generate
 	 
         if (MODE == ECB_MODE) begin : GEN_ECB
-/*
+
             // -----------------------------
             // MAIN ECB instance (index 0)
             // -----------------------------
@@ -83,6 +82,7 @@ module aes_top #(
                 .text_in_m             (text_in[127:0]),
                //.valid_in_m            (valid_din),
                 .terminate_session_m   (terminate_session),
+					 .key_sel               (key_size_sel), 
 
                 .text_out_m            (text_out[127:0]),
                 .done_m                (done_m),
@@ -132,6 +132,7 @@ module aes_top #(
 								.done_m(),
 								.cipher_start_all(),
 								.roundkey_m_out(),
+				         	.key_sel               (key_size_sel), 
 
                         // slave ports
                         .start_cipher     (cipher_start_all),
@@ -184,6 +185,8 @@ module aes_top #(
                 .done_m                (done_m),
                 .cipher_start_all      (cipher_start_all),
                 .roundkey_m_out        (roundkey_bus),
+					 
+					 .key_sel               (key_size_sel), 
 
                 // unused slave ports
                 .start_cipher          (1'b0),
@@ -232,13 +235,15 @@ module aes_top #(
 								.cipher_start_all(),
 								.roundkey_m_out(),
 
+					         .key_sel               (key_size_sel), 
+					 
                         // slave ports
                         .start_cipher     (cipher_start_all),
                         .dec              (dec),
                         .text_in          (text_in[i*128 +: 128]),
                         .read_roundkey_in (roundkey_bus),
 				
-								.counter_in    (128'b0),   // will be modified later for now its ok cuz the dop always  1 
+								.counter_in    (128'b0),   
       
 								.text_out         (text_out[i*128 +: 128]),
 
@@ -282,6 +287,7 @@ module aes_top #(
                 .text_out              (text_out[127:0]),
                 .done            		(done_m),
 					 
+					 .key_sel               (key_size_sel), 
 					 .valid_in_key_aes   (valid_in_key_aes),
 					 .valid_in_block_aes (valid_in_block_aes),
 					 
@@ -319,7 +325,7 @@ module aes_top #(
 			
 					.valid_in_key_aes   (valid_in_key_aes),
 					.valid_in_block_aes (valid_in_block_aes),
-			
+					.key_sel               (key_size_sel), 
 					.text_out          (text_out),
 					.done              (done_m),
 			
@@ -361,6 +367,8 @@ module aes_top #(
 			
 					.text_out          (text_out),
 					.done              (done_m),
+					
+					.key_sel               (key_size_sel), 
 			
 					.key_expand_ready  (key_expand_ready),
 			
@@ -477,7 +485,7 @@ module aes_top #(
     // ============================================================
     // Block Encrypt (shared datapath )
     // ============================================================
-            block_encrypt #(KEY_SIZE) BE (
+            block_encrypt BE (
                 .clk           (clk),
                 .rst_n         (rst_n),
                 .start         (cipher_start),
@@ -487,6 +495,8 @@ module aes_top #(
                 .ciphertext    (aes_raw_out),
                 .key_address   (read_key_address),
                 .done          (block_done),
+					 .key_sel               (key_size_sel), 
+
 
                 .next_encstate (next_encstate_out),
                 .round_counter (round_counter_out),
@@ -749,7 +759,7 @@ module aes_top #(
 		  
 
 		  
-	else if (MODE == VAR_KEYS_MODE) begin : GEN_VAR_KEYS
+else if (MODE == VAR_KEYS_MODE) begin : GEN_VAR_KEYS
 
     // ============================================================
     // Runtime key-size select
@@ -759,74 +769,50 @@ module aes_top #(
     localparam [1:0] KS_256 = 2'd2;
 
     // ============================================================
-    // Controller <-> datapath wires (selected)
+    // Controller <-> datapath wires (from the fixed-mode controller)
     // ============================================================
     wire         cipher_start_ctrl;
     wire [127:0] aes_in_block_ctrl;
     wire         key_exp_start_ctrl;
     wire         mem_key_rw_ctrl;
 
-    wire [127:0] aes_raw_out_sel;
-    wire         block_done_sel;
-    wire         key_expand_finish_sel;
-
+    // ============================================================
     // Final outputs from the fixed-mode controller
+    // ============================================================
     wire [127:0] text_out_fixed;
-    wire               done_fixed;
-    wire               keyr_fixed;
+    wire         done_fixed;
+    wire         keyr_fixed;
 
     // ============================================================
-    // 3 datapaths: 128 / 192 / 256
-    // (BE + KEYEXP + KEYMEM + ADDR_MUX) x3
+    // SINGLE DATAPATH WIRES (selected at runtime)
     // ============================================================
+    wire [127:0] aes_raw_out_1;
+    wire         block_done_1;
 
-    // ---------- Shared mux outputs ----------
-    reg [127:0] aes_raw_out_mux;
-    reg         block_done_mux;
-    reg         key_expand_finish_mux;
+    wire [3:0]   read_key_address_1;
+    wire [3:0]   write_key_address_1;
+    wire [4:0]   key_address_1;
 
-    // Debug mux
-    reg [127:0] next_encstate_sel;
-    reg [3:0]   round_counter_sel;
-    reg         round_mem_we_sel;
+    wire         mem_round_key_en_1;
+    wire [127:0] gen_roundkey_1;
+    wire [127:0] roundkey_out_1;
 
-    assign next_encstate_out = next_encstate_sel;
-    assign round_counter_out = round_counter_sel;
-    assign round_mem_we      = round_mem_we_sel;
+    wire [127:0] next_encstate_1;
+    wire [3:0]   round_counter_1;
+    wire         round_mem_we_1;
+
+    // Debug outputs (no debug mux anymore)
+    assign next_encstate_out = next_encstate_1;
+    assign round_counter_out = round_counter_1;
+    assign round_mem_we      = round_mem_we_1;
 
     // ============================================================
-    // --- 128 datapath ---
+    // KEEP 3 KEYEXP modules, but select their write signals
     // ============================================================
-    wire [127:0] aes_raw_out_128;
-    wire         block_done_128;
-    wire         key_expand_finish_128;
-
-    wire [3:0]   read_key_address_128;
-    wire [3:0]   write_key_address_128;
-    wire [4:0]   key_address_128;
-
-    wire         mem_round_key_en_128;
-    wire [127:0] gen_roundkey_128;
-    wire [127:0] roundkey_out_128;
-
-    wire [127:0] next_encstate_128;
-    wire [3:0]   round_counter_128;
-    wire         round_mem_we_128;
-
-    block_encrypt #(128) BE_128 (
-        .clk           (clk),
-        .rst_n         (rst_n),
-        .start         (cipher_start_ctrl),
-        .dec           (dec_aes_core),
-        .plaintext     (aes_in_block_ctrl),
-        .roundkey      (roundkey_out_128),
-        .ciphertext    (aes_raw_out_128),
-        .key_address   (read_key_address_128),
-        .done          (block_done_128),
-        .next_encstate (next_encstate_128),
-        .round_counter (round_counter_128),
-        .round_mem_we  (round_mem_we_128)
-    );
+    wire         mem_round_key_en_128, mem_round_key_en_192, mem_round_key_en_256;
+    wire [3:0]   write_key_address_128, write_key_address_192, write_key_address_256;
+    wire [127:0] gen_roundkey_128, gen_roundkey_192, gen_roundkey_256;
+    wire         key_expand_finish_128, key_expand_finish_192, key_expand_finish_256;
 
     aes_keyexpand #(128) KEYEXP_128 (
         .clk           (clk),
@@ -837,56 +823,6 @@ module aes_top #(
         .address       (write_key_address_128),
         .round_key     (gen_roundkey_128),
         .finish        (key_expand_finish_128)
-    );
-
-    mem_round_keys KEYMEM_128 (
-        .clock   (clk),
-        .address (key_address_128),
-        .data    (gen_roundkey_128),
-        .wren    (mem_round_key_en_128),
-        .q       (roundkey_out_128)
-    );
-
-    mux2to1 #(4) ADDR_MUX_128 (
-        .in0 (read_key_address_128),
-        .in1 (write_key_address_128),
-        .sel (mem_key_rw_ctrl),
-        .out (key_address_128[3:0])
-    );
-    assign key_address_128[4] = 1'b0;
-
-    // ============================================================
-    // --- 192 datapath ---
-    // ============================================================
-    wire [127:0] aes_raw_out_192;
-    wire         block_done_192;
-    wire         key_expand_finish_192;
-
-    wire [3:0]   read_key_address_192;
-    wire [3:0]   write_key_address_192;
-    wire [4:0]   key_address_192;
-
-    wire         mem_round_key_en_192;
-    wire [127:0] gen_roundkey_192;
-    wire [127:0] roundkey_out_192;
-
-    wire [127:0] next_encstate_192;
-    wire [3:0]   round_counter_192;
-    wire         round_mem_we_192;
-
-    block_encrypt #(192) BE_192 (
-        .clk           (clk),
-        .rst_n         (rst_n),
-        .start         (cipher_start_ctrl),
-        .dec           (dec_aes_core),
-        .plaintext     (aes_in_block_ctrl),
-        .roundkey      (roundkey_out_192),
-        .ciphertext    (aes_raw_out_192),
-        .key_address   (read_key_address_192),
-        .done          (block_done_192),
-        .next_encstate (next_encstate_192),
-        .round_counter (round_counter_192),
-        .round_mem_we  (round_mem_we_192)
     );
 
     aes_keyexpand #(192) KEYEXP_192 (
@@ -900,56 +836,6 @@ module aes_top #(
         .finish        (key_expand_finish_192)
     );
 
-    mem_round_keys KEYMEM_192 (
-        .clock   (clk),
-        .address (key_address_192),
-        .data    (gen_roundkey_192),
-        .wren    (mem_round_key_en_192),
-        .q       (roundkey_out_192)
-    );
-
-    mux2to1 #(4) ADDR_MUX_192 (
-        .in0 (read_key_address_192),
-        .in1 (write_key_address_192),
-        .sel (mem_key_rw_ctrl),
-        .out (key_address_192[3:0])
-    );
-    assign key_address_192[4] = 1'b0;
-
-    // ============================================================
-    // --- 256 datapath ---
-    // ============================================================
-    wire [127:0] aes_raw_out_256;
-    wire         block_done_256;
-    wire         key_expand_finish_256;
-
-    wire [3:0]   read_key_address_256;
-    wire [3:0]   write_key_address_256;
-    wire [4:0]   key_address_256;
-
-    wire         mem_round_key_en_256;
-    wire [127:0] gen_roundkey_256;
-    wire [127:0] roundkey_out_256;
-
-    wire [127:0] next_encstate_256;
-    wire [3:0]   round_counter_256;
-    wire         round_mem_we_256;
-
-    block_encrypt #(256) BE_256 (
-        .clk           (clk),
-        .rst_n         (rst_n),
-        .start         (cipher_start_ctrl),
-        .dec           (dec_aes_core),
-        .plaintext     (aes_in_block_ctrl),
-        .roundkey      (roundkey_out_256),
-        .ciphertext    (aes_raw_out_256),
-        .key_address   (read_key_address_256),
-        .done          (block_done_256),
-        .next_encstate (next_encstate_256),
-        .round_counter (round_counter_256),
-        .round_mem_we  (round_mem_we_256)
-    );
-
     aes_keyexpand #(256) KEYEXP_256 (
         .clk           (clk),
         .rst_n         (rst_n),
@@ -961,77 +847,97 @@ module aes_top #(
         .finish        (key_expand_finish_256)
     );
 
-    mem_round_keys KEYMEM_256 (
-        .clock   (clk),
-        .address (key_address_256),
-        .data    (gen_roundkey_256),
-        .wren    (mem_round_key_en_256),
-        .q       (roundkey_out_256)
-    );
-
-    mux2to1 #(4) ADDR_MUX_256 (
-        .in0 (read_key_address_256),
-        .in1 (write_key_address_256),
-        .sel (mem_key_rw_ctrl),
-        .out (key_address_256[3:0])
-    );
-    assign key_address_256[4] = 1'b0;
-
     // ============================================================
-    // Key-size mux (select which datapath feeds the controller)
+    // Key-size select mux for KEYEXP -> KEYMEM write interface
     // ============================================================
+    reg         mem_round_key_en_sel;
+    reg [3:0]   write_key_address_sel;
+    reg [127:0] gen_roundkey_sel;
+    reg         key_expand_finish_sel;
+
     always @(*) begin
         // default = 128
-        aes_raw_out_mux       = aes_raw_out_128;
-        block_done_mux        = block_done_128;
-        key_expand_finish_mux = key_expand_finish_128;
-
-        next_encstate_sel     = next_encstate_128;
-        round_counter_sel     = round_counter_128;
-        round_mem_we_sel      = round_mem_we_128;
+        mem_round_key_en_sel  = mem_round_key_en_128;
+        write_key_address_sel = write_key_address_128;
+        gen_roundkey_sel      = gen_roundkey_128;
+        key_expand_finish_sel = key_expand_finish_128;
 
         case (key_size_sel)
             KS_128: begin
-                aes_raw_out_mux       = aes_raw_out_128;
-                block_done_mux        = block_done_128;
-                key_expand_finish_mux = key_expand_finish_128;
-
-                next_encstate_sel     = next_encstate_128;
-                round_counter_sel     = round_counter_128;
-                round_mem_we_sel      = round_mem_we_128;
+                mem_round_key_en_sel  = mem_round_key_en_128;
+                write_key_address_sel = write_key_address_128;
+                gen_roundkey_sel      = gen_roundkey_128;
+                key_expand_finish_sel = key_expand_finish_128;
             end
-
             KS_192: begin
-                aes_raw_out_mux       = aes_raw_out_192;
-                block_done_mux        = block_done_192;
-                key_expand_finish_mux = key_expand_finish_192;
-
-                next_encstate_sel     = next_encstate_192;
-                round_counter_sel     = round_counter_192;
-                round_mem_we_sel      = round_mem_we_192;
+                mem_round_key_en_sel  = mem_round_key_en_192;
+                write_key_address_sel = write_key_address_192;
+                gen_roundkey_sel      = gen_roundkey_192;
+                key_expand_finish_sel = key_expand_finish_192;
             end
-
             default: begin // KS_256
-                aes_raw_out_mux       = aes_raw_out_256;
-                block_done_mux        = block_done_256;
-                key_expand_finish_mux = key_expand_finish_256;
-
-                next_encstate_sel     = next_encstate_256;
-                round_counter_sel     = round_counter_256;
-                round_mem_we_sel      = round_mem_we_256;
+                mem_round_key_en_sel  = mem_round_key_en_256;
+                write_key_address_sel = write_key_address_256;
+                gen_roundkey_sel      = gen_roundkey_256;
+                key_expand_finish_sel = key_expand_finish_256;
             end
         endcase
     end
 
-    assign aes_raw_out_sel       = aes_raw_out_mux;
-    assign block_done_sel        = block_done_mux;
-    assign key_expand_finish_sel = key_expand_finish_mux;
+    assign mem_round_key_en_1  = mem_round_key_en_sel;
+    assign write_key_address_1 = write_key_address_sel;
+    assign gen_roundkey_1      = gen_roundkey_sel;
+
+    // ============================================================
+    // SINGLE KEY MEMORY
+    // IMPORTANT: depth must support AES-256 (addr 0..14), depth 16 ideal
+    // ============================================================
+    mem_round_keys KEYMEM_1 (
+        .clock   (clk),
+        .address (key_address_1),
+        .data    (gen_roundkey_1),
+        .wren    (mem_round_key_en_1),
+        .q       (roundkey_out_1)
+    );
+
+    // Address mux: read from BE vs write from KEYEXP
+    mux2to1 #(4) ADDR_MUX_1 (
+        .in0 (read_key_address_1),
+        .in1 (write_key_address_1),
+        .sel (mem_key_rw_ctrl),
+        .out (key_address_1[3:0])
+    );
+    assign key_address_1[4] = 1'b0;
+
+    // ============================================================
+    // SINGLE BLOCK ENCRYPT (runtime key_sel)  <<< MAIN CHANGE
+    // ============================================================
+    block_encrypt BE_1 (
+        .clk           (clk),
+        .rst_n         (rst_n),
+        .start         (cipher_start_ctrl),
+        .dec           (dec_aes_core),
+        .plaintext     (aes_in_block_ctrl),
+        .roundkey      (roundkey_out_1),
+        .key_sel       (key_size_sel),      // <<< ADDED (runtime key size)
+        .ciphertext    (aes_raw_out_1),
+        .key_address   (read_key_address_1),
+        .done          (block_done_1),
+        .next_encstate (next_encstate_1),
+        .round_counter (round_counter_1),
+        .round_mem_we  (round_mem_we_1)
+    );
+
+    // Feedback to controller (selected datapath is now single)
+    wire [127:0] aes_raw_out_sel       = aes_raw_out_1;
+    wire         block_done_sel        = block_done_1;
+    wire         key_expand_finish_sel_w = key_expand_finish_sel;
 
     // ============================================================
     // FIXED MODE (compile-time) controller generation
-    // Only ONE of these blocks is synthesized.
+    // Only ONE controller is synthesized.
     // ============================================================
-begin : GEN_FIXED_CTRL
+    begin : GEN_FIXED_CTRL
         if (FIXED_VARKEY_MODE == ECB_MODE) begin : GEN_FIXED_ECB_VARKEY
             aes_ecb_var CTRL (
                 .clk                (clk),
@@ -1050,7 +956,7 @@ begin : GEN_FIXED_CTRL
                 .aes_raw_out        (aes_raw_out_sel),
                 .block_done         (block_done_sel),
                 .key_exp_start      (key_exp_start_ctrl),
-                .key_expand_finish  (key_expand_finish_sel),
+                .key_expand_finish  (key_expand_finish_sel_w),
                 .mem_key_rw         (mem_key_rw_ctrl)
             );
         end
@@ -1073,7 +979,7 @@ begin : GEN_FIXED_CTRL
                 .mem_key_rw         (mem_key_rw_ctrl),
                 .aes_raw_out        (aes_raw_out_sel),
                 .block_done         (block_done_sel),
-                .key_expand_finish  (key_expand_finish_sel),
+                .key_expand_finish  (key_expand_finish_sel_w),
                 .done_m             (done_fixed)
             );
         end
@@ -1096,7 +1002,7 @@ begin : GEN_FIXED_CTRL
                 .aes_raw_out       (aes_raw_out_sel),
                 .block_done        (block_done_sel),
                 .key_exp_start     (key_exp_start_ctrl),
-                .key_expand_finish (key_expand_finish_sel),
+                .key_expand_finish (key_expand_finish_sel_w),
                 .mem_key_rw        (mem_key_rw_ctrl)
             );
         end
@@ -1119,7 +1025,7 @@ begin : GEN_FIXED_CTRL
                 .aes_raw_out       (aes_raw_out_sel),
                 .block_done        (block_done_sel),
                 .key_exp_start     (key_exp_start_ctrl),
-                .key_expand_finish (key_expand_finish_sel),
+                .key_expand_finish (key_expand_finish_sel_w),
                 .mem_key_rw        (mem_key_rw_ctrl)
             );
         end
@@ -1142,19 +1048,18 @@ begin : GEN_FIXED_CTRL
                 .aes_raw_out       (aes_raw_out_sel),
                 .block_done        (block_done_sel),
                 .key_exp_start     (key_exp_start_ctrl),
-                .key_expand_finish (key_expand_finish_sel),
+                .key_expand_finish (key_expand_finish_sel_w),
                 .mem_key_rw        (mem_key_rw_ctrl)
             );
         end
-end
+    end
 
-    // DOP treated as 1 for now (same as your var-modes)
+    // Final outputs
     assign text_out         = text_out_fixed;
     assign valid_dout       = done_fixed;
     assign key_expand_ready = keyr_fixed;
-*/
-end
 
+end
 
 else if (MODE == VAR_FULL_MODE) begin : GEN_VAR_FULL
 

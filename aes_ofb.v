@@ -12,6 +12,7 @@ module aes_ofb #(
      input  wire [127:0]          text_in,
      input  wire                  terminate_session,
 
+     input  wire                  key_sel,
      input  wire                  valid_in_key_aes,
      input  wire                  valid_in_block_aes,
 
@@ -77,7 +78,7 @@ module aes_ofb #(
      // ------------------------------------------------
      // Block Encrypt (FORCED ENCRYPT for OFB)
      // ------------------------------------------------
-     block_encrypt #(KEY_SIZE) BE (
+     block_encrypt BE (
           .clk           (clk),
           .rst_n         (rst_n),
           .start         (cipher_start),
@@ -87,6 +88,8 @@ module aes_ofb #(
           .ciphertext    (aes_raw_out),
           .key_address   (read_key_address),
           .done          (block_done),
+			 .key_sel       (key_sel),
+
 
           .next_encstate (next_encstate_out),
           .round_counter (round_counter_out),

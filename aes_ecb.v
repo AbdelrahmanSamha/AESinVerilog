@@ -32,6 +32,8 @@ module aes_ecb #(
 	output reg key_expand_ready,    // stays high when round keys are ready - for rx fsm 
 
 	
+   input key_sel,
+	
    input valid_in_key_aes,
    input valid_in_block_aes,
 	
@@ -74,7 +76,7 @@ module aes_ecb #(
 			// -----------------------------
 				
 			
-			block_encrypt #(KEY_SIZE) BE (
+			block_encrypt BE (
 				.clk(clk),
 				.rst_n(rst_n),
 				.start(cipher_start_all),
@@ -84,6 +86,7 @@ module aes_ecb #(
 				.ciphertext(text_out_m),
 				.key_address(read_key_address),
 				.done(block_encryption_finish_m),
+				.key_sel(key_sel),
 				
 				.next_encstate(next_encstate_out),
 				.round_counter(round_counter_out),

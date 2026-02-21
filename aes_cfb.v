@@ -12,6 +12,7 @@ module aes_cfb #(
      input  wire [127:0]          text_in,
      input  wire                  terminate_session,
 
+     input  wire                  key_sel,
      input  wire                  valid_in_key_aes,
      input  wire                  valid_in_block_aes,
 
@@ -77,7 +78,7 @@ module aes_cfb #(
      // ------------------------------------------------
      // Block Encrypt (FORCED ENCRYPT for CFB)
      // ------------------------------------------------
-     block_encrypt #(KEY_SIZE) BE (
+     block_encrypt BE (
           .clk           (clk),
           .rst_n         (rst_n),
           .start         (cipher_start),

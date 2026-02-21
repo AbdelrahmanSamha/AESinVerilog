@@ -12,6 +12,7 @@
 		 input  wire [127:0]          text_in,
 		 input  wire                  terminate_session,
 
+		 input  wire                  key_sel,
 		 input  wire                  valid_in_key_aes,
 		 input  wire                  valid_in_block_aes,
 
@@ -76,7 +77,7 @@
 		 // ------------------------------------------------
 		 // Block Encrypt
 		 // ------------------------------------------------
-		 block_encrypt #(KEY_SIZE) BE (
+		 block_encrypt BE (
 			  .clk        (clk),
 			  .rst_n      (rst_n),
 			  .start      (cipher_start),
@@ -89,7 +90,9 @@
 
 			  .next_encstate (next_encstate_out),
 			  .round_counter (round_counter_out),
-			  .round_mem_we  (round_mem_we)
+			  .round_mem_we  (round_mem_we),
+			  .key_sel(key_sel)
+
 		 );
 
 		 // ------------------------------------------------
