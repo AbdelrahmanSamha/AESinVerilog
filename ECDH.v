@@ -1,7 +1,7 @@
 module ECDH (
     input clk, 
     input rst_n, 
-    
+    input pll_locked,
     input start,                    
     input [255:0] scalar,
     input [255:0] u_coordinate, 
@@ -97,7 +97,7 @@ module ECDH (
     
         case (r_state)
             IDLE: begin
-                if (start) w_next_state = INITIALIZER; 
+                if (start && pll_locked) w_next_state = INITIALIZER; 
             end
             
             INITIALIZER: begin

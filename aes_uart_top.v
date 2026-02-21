@@ -17,9 +17,10 @@ module aes_uart_top #(
     output wire [7:0]  tx_byte
 	*/ 
 	 input  wire 			uart_rx,       // Incoming serial line
-    output wire 			uart_tx        // Outgoing serial line
-	 
-
+	 input wire en_trng_osc, 
+    output wire 			uart_tx,       // Outgoing serial line
+	 	 output wire pll_locked
+	
 );
 
     // ============================================================
@@ -156,7 +157,21 @@ module aes_uart_top #(
 	 wire sha_dh_we;
 	 
     assign sha_dh_we = buf_sha_we | buf_dh_we;
-
+	 
+	 
+	 //==========================================
+	 //CLOCK DOMAIN CROSSING WIRES AND REGISTERS
+	 //==========================================
+	 reg dh_done_sync_0;
+	 reg dh_done_sync_1;
+	 reg dh_done_sync_2;
+	 wire dh_done_pulse;
+	 reg [2:0] dh_start_stretch;   // 3-bit counter to hold signal high
+	 reg       dh_start_50;        // stretched version (multiple cycles wide)
+	 reg dh_start_sync_0;
+	 reg dh_start_sync_1;
+	 wire dh_start_25;		 
+	 
     // ============================================================
     // RX FSM
     // ============================================================
@@ -306,7 +321,7 @@ module aes_uart_top #(
 		  .echo_tx_start (echo_tx_start),
 		  
 		  .dh_start (dh_start),
-		  .dh_done (dh_done),
+		  .dh_done (dh_done_pulse),
 		  .cmd_is_dh (cmd_is_dh)
 
     );
@@ -426,7 +441,7 @@ module aes_uart_top #(
 			.clk        (clk),
 			.rst_n      (rst_n && finish_cmd_rst),  // reset with session reset
 			.start      (trng_start),
-			.enable_osc (),                     
+			.enable_osc (en_trng_osc),                     
 			.done       (trng_done),
 			.random_data(trng_data)
 		);
@@ -456,7 +471,7 @@ module aes_uart_top #(
 		
 	  mux2to1 #(.WIDTH(1)) u_mux_sha_trng_dh_valid (
 			.in0 (sha_trng_done),   // SHA done pulse
-			.in1 (dh_done),  // TRNG done pulse
+			.in1 (dh_done_pulse),  // ECDH done pulse
 			.sel (cmd_is_dh),
 			.out (sha_trng_dh_done)
 		);
@@ -484,14 +499,94 @@ module aes_uart_top #(
         .tx_ready(tx_ready)          
     );
 
+
 	ECDH u_ecdh(
-        .clk(clk),
+        .clk(PLL_25MHZ),
         .rst_n(rst_n),
-        .start(dh_start),
+		  .pll_locked(pll_locked),
+        .start(dh_start_25),
         .scalar(sha_block_reg[511:256]),//256bits
         .u_coordinate(sha_block_reg[255:0]),//256bits
         .result(dh_result),//256bits
         .done(dh_done)
     );
+	 
+	ECDH_PLL ECDH_pll(
+	.areset(~rst_n),
+	.inclk0(clk),
+	.c0(PLL_25MHZ),
+	.locked(pll_locked)
+	);
+	
+	
+	// ============================================================
+	// 50 MHz DOMAIN
+	// Stretch dh_start to 2 clock cycles (50 MHz)
+	// ============================================================
+
+	always @(posedge clk or negedge rst_n) begin
+		if (!rst_n) begin
+			dh_start_stretch <= 3'b00;
+			dh_start_50      <= 1'b0;
+		end 
+		else begin
+			// This will keep dh_start_50 high for.
+			if (dh_start) begin
+					dh_start_stretch <= 3'd5;
+			end 
+			// If counter is not zero, decrement each clock
+			else if (dh_start_stretch != 3'd00) begin
+					dh_start_stretch <= dh_start_stretch - 3'b1;
+			end
+	
+			// dh_start_50 remains HIGH as long as counter != 0
+			dh_start_50 <= (dh_start_stretch != 3'b00);
+		end
+	end
+	
+	
+	// ============================================================
+	// CLOCK DOMAIN CROSSING (50 MHz → 25 MHz)
+	// Synchronize stretched pulse into 25 MHz domain
+	// ============================================================
+	
+
+	always @(posedge PLL_25MHZ or negedge rst_n) begin
+		if (!rst_n) begin
+			dh_start_sync_0 <= 1'b0;
+			dh_start_sync_1 <= 1'b0;
+		end 
+		else begin
+			// First flip-flop reduces metastability risk
+			dh_start_sync_0 <= dh_start_50;
+	
+			// Second flip-flop completes synchronization
+			dh_start_sync_1 <= dh_start_sync_0;
+		end
+	end
+	
+	// Final start signal used in 25 MHz domain
+	assign dh_start_25 = dh_start_sync_1;
+	
+	
+
+	
+	//Safety for Clock Domain crossing, make the Done signal high for 1cycle at the 50Mhz domain. 
+
+	always @(posedge clk or negedge rst_n) begin
+		if (!rst_n) begin
+			dh_done_sync_0 <= 1'b0;
+			dh_done_sync_1 <= 1'b0;
+			dh_done_sync_2 <= 1'b0;
+		end else begin
+			// 2-flop synchronizer
+			dh_done_sync_0 <= dh_done;        // from 25MHz domain
+			dh_done_sync_1 <= dh_done_sync_0;
+			dh_done_sync_2 <= dh_done_sync_1;
+		end
+	end
+	
+	// Rising edge detect (1 cycle at 50MHz)
+	assign dh_done_pulse = dh_done_sync_1 & ~dh_done_sync_2;
 
 endmodule

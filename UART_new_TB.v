@@ -289,7 +289,7 @@ module UART_new_TB;
         // ---------------- Receive result (2 blocks) ----------------
 	*/
         receive_blocks(2);
-		  
+/*		  
 		  #1000000;
 		  
  		$display("---- UART AES TEST ----");
@@ -298,13 +298,13 @@ module UART_new_TB;
         uart_send_byte(8'h06); // CMD
 		  #200;
 		  uart_rx = 1'b1;
-       /* uart_send_byte(8'b00001000); // FLAGS
+        uart_send_byte(8'b00001000); // FLAGS
 		  #200;
 		  uart_rx = 1'b1;
         uart_send_byte(8'h05); // length = 32 bytes (2 blocks)
 		  #200
 		  uart_rx = 1'b1;	
-		  */
+
         // ---------------- Key ----------------
         send_key_256(256'd20);
 	   	  uart_rx = 1'b1;
@@ -314,7 +314,7 @@ module UART_new_TB;
        // send_block_128(128'hF0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF); // iv 
 		//	uart_rx = 1'b1;
         // ---------------- Block 2 ----------------
-   /*     send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
+    send_block_128(128'h3ad77bb40d7a3660a89ecaf32466ef97);
 			uart_rx = 1'b1;
 			
         // ---------------- Block 3 ----------------
@@ -330,9 +330,9 @@ module UART_new_TB;
       //  send_block_128(128'ha254be88e037ddd9d79fb6411c3f9df8);
 			//uart_rx = 1'b1;
         // ---------------- Receive result (2 blocks) ----------------
-	*/
+	
         receive_blocks(4);
-		  
+		 */ 
 
         $stop;
     end
